@@ -5,6 +5,7 @@ const nextConfig: NextConfig = {
     remotePatterns: [
       { hostname: "*.r2.cloudflarestorage.com" },
       { hostname: "*.cloudflare.com" },
+      { hostname: "*.workers.dev" },
       { hostname: "localhost" },
     ],
   },
