@@ -48,15 +48,51 @@ export async function apiClient<T = unknown>(
 
 import type { ProdutoBase, PaginatedResponse } from '@/types'
 
+/**
+ * Normaliza o produto da API (camelCase + specs aninhado)
+ * para a estrutura que os componentes esperam (snake_case + produto_* flat)
+ */
+function normalizeProduto(raw: any): ProdutoBase {
+  const p = keysToSnake<any>(raw)
+
+  // A API retorna imagens em "imagens", front espera "produto_imagens"
+  if (raw.imagens && !p.produto_imagens) {
+    p.produto_imagens = raw.imagens.map((img: any) => keysToSnake<any>(img))
+  }
+
+  // A API retorna specs como { la, placa, perfil, parafuso, acessorio, revestimento }
+  // Front espera produto_las, produto_placas, produto_perfis, etc.
+  if (raw.specs) {
+    if (raw.specs.la) p.produto_las = keysToSnake(raw.specs.la)
+    if (raw.specs.placa) p.produto_placas = keysToSnake(raw.specs.placa)
+    if (raw.specs.perfil) p.produto_perfis = keysToSnake(raw.specs.perfil)
+    if (raw.specs.parafuso) p.produto_parafusos = keysToSnake(raw.specs.parafuso)
+    if (raw.specs.acessorio) p.produto_acessorios = keysToSnake(raw.specs.acessorio)
+    if (raw.specs.revestimento) p.produto_revestimentos = keysToSnake(raw.specs.revestimento)
+  }
+
+  // Variantes
+  if (raw.variantes && !p.variantes) {
+    p.variantes = raw.variantes.map((v: any) => keysToSnake<any>(v))
+  }
+
+  // Color slugs
+  if (raw.colorSlugs) {
+    p.color_slugs = raw.colorSlugs
+  }
+
+  return p as ProdutoBase
+}
+
 export const api = {
   catalogo: {
     listar: async () => {
       const res = await apiGetPublic<PaginatedResponse<any>>('/api/produtos?publico=true&limit=9999', 60)
-      return (res.data || []).map((p: any) => keysToSnake<ProdutoBase>(p))
+      return (res.data || []).map((p: any) => normalizeProduto(p))
     },
     buscar: async (slug: string) => {
       const raw = await apiGetPublic<any>(`/api/produtos/slug/${slug}`)
-      return keysToSnake<ProdutoBase>(raw)
+      return normalizeProduto(raw)
     },
   },
 }

@@ -166,6 +166,76 @@ export function ProdutoDetalheClient({ produto: p }: Props) {
                 )}
               </>
             )}
+            {p.produto_revestimentos && (
+              <>
+                {p.produto_revestimentos.material && (
+                  <SpecCard icon={<Layers className="h-4 w-4" />} label="Material" value={p.produto_revestimentos.material} />
+                )}
+                {p.produto_revestimentos.acabamento && (
+                  <SpecCard icon={<Sparkles className="h-4 w-4" />} label="Acabamento" value={p.produto_revestimentos.acabamento} />
+                )}
+                {p.produto_revestimentos.formato && (
+                  <SpecCard icon={<BoxSelect className="h-4 w-4" />} label="Formato" value={p.produto_revestimentos.formato} />
+                )}
+                {p.produto_revestimentos.espessuras && (
+                  <SpecCard icon={<Ruler className="h-4 w-4" />} label="Espessuras" value={p.produto_revestimentos.espessuras} />
+                )}
+                {p.produto_revestimentos.nrc && (
+                  <SpecCard icon={<Volume2 className="h-4 w-4" />} label="NRC" value={p.produto_revestimentos.nrc} />
+                )}
+                {p.produto_revestimentos.tipo_fixacao && (
+                  <SpecCard icon={<Wrench className="h-4 w-4" />} label="Fixação" value={p.produto_revestimentos.tipo_fixacao} />
+                )}
+                {p.produto_revestimentos.composicao && (
+                  <SpecCard icon={<ShieldCheck className="h-4 w-4" />} label="Composição" value={p.produto_revestimentos.composicao} />
+                )}
+              </>
+            )}
+            {p.produto_perfis && (
+              <>
+                {p.produto_perfis.tipo && (
+                  <SpecCard icon={<Ruler className="h-4 w-4" />} label="Tipo" value={p.produto_perfis.tipo} />
+                )}
+                {p.produto_perfis.largura && (
+                  <SpecCard icon={<Ruler className="h-4 w-4" />} label="Largura" value={p.produto_perfis.largura} />
+                )}
+                {p.produto_perfis.comprimento && (
+                  <SpecCard icon={<Ruler className="h-4 w-4" />} label="Comprimento" value={p.produto_perfis.comprimento} />
+                )}
+                {p.produto_perfis.acabamento && (
+                  <SpecCard icon={<Sparkles className="h-4 w-4" />} label="Acabamento" value={p.produto_perfis.acabamento} />
+                )}
+              </>
+            )}
+            {p.produto_parafusos && (
+              <>
+                {p.produto_parafusos.tipo && (
+                  <SpecCard icon={<Wrench className="h-4 w-4" />} label="Tipo" value={p.produto_parafusos.tipo} />
+                )}
+                {p.produto_parafusos.diametro && (
+                  <SpecCard icon={<Disc className="h-4 w-4" />} label="Diâmetro" value={p.produto_parafusos.diametro} />
+                )}
+                {p.produto_parafusos.comprimento && (
+                  <SpecCard icon={<Ruler className="h-4 w-4" />} label="Comprimento" value={p.produto_parafusos.comprimento} />
+                )}
+                {p.produto_parafusos.material && (
+                  <SpecCard icon={<ShieldCheck className="h-4 w-4" />} label="Material" value={p.produto_parafusos.material} />
+                )}
+              </>
+            )}
+            {p.produto_acessorios && (
+              <>
+                {p.produto_acessorios.tipo && (
+                  <SpecCard icon={<Sparkles className="h-4 w-4" />} label="Tipo" value={p.produto_acessorios.tipo} />
+                )}
+                {p.produto_acessorios.aplicacao && (
+                  <SpecCard icon={<Wrench className="h-4 w-4" />} label="Aplicação" value={p.produto_acessorios.aplicacao} />
+                )}
+                {p.produto_acessorios.rendimento && (
+                  <SpecCard icon={<BoxSelect className="h-4 w-4" />} label="Rendimento" value={p.produto_acessorios.rendimento} />
+                )}
+              </>
+            )}
             {p.classificacao_fogo && (
               <SpecCard
                 icon={<ShieldCheck className="h-4 w-4" />}
