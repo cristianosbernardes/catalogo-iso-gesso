@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import Link from 'next/link'
 import { motion } from 'framer-motion'
 import { Card, CardContent } from '@/components/ui/card'
@@ -51,7 +51,7 @@ function HeroBanner({ produtos, prefix }: { produtos: ProdutoBase[]; prefix: str
   if (bannerItems.length === 0) {
     return (
       <section className="relative bg-gradient-to-br from-primary/10 via-background to-accent/5 py-20">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+        <div className="max-w-screen-xl 2xl:max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <h1 className="text-4xl md:text-5xl font-bold text-foreground mb-4">
             Soluções em <span className="text-primary">Isolamento Acústico</span>
           </h1>
@@ -72,7 +72,7 @@ function HeroBanner({ produtos, prefix }: { produtos: ProdutoBase[]; prefix: str
 
   return (
     <section className="relative overflow-hidden bg-gradient-to-br from-primary/5 via-background to-accent/5">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 md:py-20">
+      <div className="max-w-screen-xl 2xl:max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-8 py-12 md:py-20">
         <div className="flex flex-col md:flex-row items-center gap-8 md:gap-12">
           {/* Text */}
           <motion.div
@@ -141,6 +141,102 @@ function HeroBanner({ produtos, prefix }: { produtos: ProdutoBase[]; prefix: str
   )
 }
 
+/* ── Coleções Carousel ── */
+function ColecoesCarousel({ categorias, prefix }: { categorias: Categoria[]; prefix: string }) {
+  const scrollRef = useRef<HTMLDivElement>(null)
+  const [canScrollLeft, setCanScrollLeft] = useState(false)
+  const [canScrollRight, setCanScrollRight] = useState(true)
+
+  const checkScroll = useCallback(() => {
+    const el = scrollRef.current
+    if (!el) return
+    setCanScrollLeft(el.scrollLeft > 4)
+    setCanScrollRight(el.scrollLeft < el.scrollWidth - el.clientWidth - 4)
+  }, [])
+
+  useEffect(() => {
+    const el = scrollRef.current
+    if (!el) return
+    checkScroll()
+    el.addEventListener('scroll', checkScroll, { passive: true })
+    window.addEventListener('resize', checkScroll)
+    return () => {
+      el.removeEventListener('scroll', checkScroll)
+      window.removeEventListener('resize', checkScroll)
+    }
+  }, [checkScroll])
+
+  const scroll = (dir: 'left' | 'right') => {
+    const el = scrollRef.current
+    if (!el) return
+    const amount = el.clientWidth * 0.7
+    el.scrollBy({ left: dir === 'left' ? -amount : amount, behavior: 'smooth' })
+  }
+
+  return (
+    <section className="max-w-screen-xl 2xl:max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+      <motion.div {...fadeIn}>
+        <div className="flex items-center justify-between mb-6">
+          <h2 className="text-2xl font-bold text-foreground">Coleções</h2>
+          <Link
+            href={`${prefix}/produtos`}
+            className="text-sm text-primary hover:underline flex items-center gap-1"
+          >
+            Ver todas <ChevronRight className="h-4 w-4" />
+          </Link>
+        </div>
+      </motion.div>
+      <motion.div {...fadeIn} transition={{ delay: 0.1, ease: 'easeOut' as const }}>
+        <div className="relative group/carousel">
+          {/* Seta Esquerda */}
+          {canScrollLeft && (
+            <button
+              onClick={() => scroll('left')}
+              className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-3 z-10 h-10 w-10 rounded-full bg-card border border-border shadow-lg flex items-center justify-center hover:bg-muted transition-colors"
+            >
+              <ChevronLeft className="h-5 w-5 text-foreground" />
+            </button>
+          )}
+
+          {/* Scroll Container */}
+          <div
+            ref={scrollRef}
+            className="flex gap-4 overflow-x-auto scrollbar-hide scroll-smooth pb-2"
+            style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+          >
+            {categorias.map((cat) => (
+              <Link
+                key={cat.id}
+                href={`${prefix}/produtos?categoria=${encodeURIComponent(cat.nome)}`}
+                className="shrink-0"
+              >
+                <Card className="w-32 h-32 hover:shadow-md transition-shadow cursor-pointer group">
+                  <CardContent className="h-full p-0 flex flex-col items-center justify-center gap-2.5">
+                    <div className="h-11 w-11 rounded-xl bg-primary/10 flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-primary-foreground transition-colors">
+                      {categoriaIcon[cat.nome] || <Package className="h-5 w-5" />}
+                    </div>
+                    <span className="text-xs font-medium text-foreground leading-tight text-center px-2 line-clamp-2">{cat.nome}</span>
+                  </CardContent>
+                </Card>
+              </Link>
+            ))}
+          </div>
+
+          {/* Seta Direita */}
+          {canScrollRight && (
+            <button
+              onClick={() => scroll('right')}
+              className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-3 z-10 h-10 w-10 rounded-full bg-card border border-border shadow-lg flex items-center justify-center hover:bg-muted transition-colors"
+            >
+              <ChevronRight className="h-5 w-5 text-foreground" />
+            </button>
+          )}
+        </div>
+      </motion.div>
+    </section>
+  )
+}
+
 /* ── Main Home Component ── */
 export function HomeClient({ populares, categorias, allProdutos }: Props) {
   const { prefix, isInternal } = useCatalogContext()
@@ -150,46 +246,15 @@ export function HomeClient({ populares, categorias, allProdutos }: Props) {
       {/* Hero Banner Carousel */}
       <HeroBanner produtos={populares.length > 0 ? populares : allProdutos} prefix={prefix} />
 
-      {/* Coleções / Categorias */}
+      {/* Coleções / Categorias — Carrossel */}
       {categorias.length > 0 && (
-        <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-          <motion.div {...fadeIn}>
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-2xl font-bold text-foreground">Coleções</h2>
-              <Link
-                href={`${prefix}/produtos`}
-                className="text-sm text-primary hover:underline flex items-center gap-1"
-              >
-                Ver todas <ChevronRight className="h-4 w-4" />
-              </Link>
-            </div>
-          </motion.div>
-          <motion.div {...fadeIn} transition={{ delay: 0.1, ease: 'easeOut' as const }}>
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
-              {categorias.map((cat) => (
-                <Link
-                  key={cat.id}
-                  href={`${prefix}/produtos?categoria=${encodeURIComponent(cat.nome)}`}
-                >
-                  <Card className="h-full hover:shadow-md transition-shadow cursor-pointer group text-center">
-                    <CardContent className="p-5 flex flex-col items-center gap-3">
-                      <div className="h-12 w-12 rounded-xl bg-primary/10 flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-primary-foreground transition-colors">
-                        {categoriaIcon[cat.nome] || <Package className="h-6 w-6" />}
-                      </div>
-                      <span className="text-sm font-medium text-foreground">{cat.nome}</span>
-                    </CardContent>
-                  </Card>
-                </Link>
-              ))}
-            </div>
-          </motion.div>
-        </section>
+        <ColecoesCarousel categorias={categorias} prefix={prefix} />
       )}
 
       {/* Produtos Mais Vendidos */}
       {populares.length > 0 && (
         <section className="bg-muted/30 py-12">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="max-w-screen-xl 2xl:max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-8">
             <motion.div {...fadeIn}>
               <div className="flex items-center justify-between mb-6">
                 <div className="flex items-center gap-2">
@@ -245,7 +310,7 @@ export function HomeClient({ populares, categorias, allProdutos }: Props) {
       )}
 
       {/* CTA Final */}
-      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+      <section className="max-w-screen-xl 2xl:max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
         <motion.div {...fadeIn}>
           <Card className="bg-gradient-to-r from-primary/5 to-accent/5">
             <CardContent className="p-8 md:p-12 text-center">

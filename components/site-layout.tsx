@@ -39,11 +39,11 @@ export default function SiteLayout({ children }: { children: React.ReactNode }) 
     <div className="min-h-screen flex flex-col bg-background">
       {/* Header */}
       <header className="sticky top-0 z-50 border-b border-border bg-card/95 backdrop-blur-md">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="max-w-screen-xl 2xl:max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             {/* Logo */}
             <Link
-              href={`${prefix}/produtos`}
+              href={prefix}
               className="flex items-center gap-2.5 shrink-0 rounded-xl px-3 py-1.5"
               style={branding.hasCustomLogo && branding.bgEnabled ? { backgroundColor: branding.bgColor } : undefined}
             >
@@ -148,7 +148,7 @@ export default function SiteLayout({ children }: { children: React.ReactNode }) 
 
       {/* Footer */}
       <footer className="border-t border-border bg-card">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+        <div className="max-w-screen-xl 2xl:max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
           <div className="grid grid-cols-1 md:grid-cols-5 gap-8">
             {/* Brand */}
             <div className="md:col-span-2">

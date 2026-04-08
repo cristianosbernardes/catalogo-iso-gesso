@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import { Inter } from 'next/font/google'
 import { QueryProvider } from '@/lib/query-provider'
 import SiteLayout from '@/components/site-layout'
+import { DynamicFavicon } from '@/components/dynamic-favicon'
 import './globals.css'
 
 const inter = Inter({ variable: '--font-sans', subsets: ['latin'] })
@@ -16,6 +17,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="pt-BR" className={`${inter.variable} h-full`}>
       <body className="min-h-full flex flex-col antialiased">
         <QueryProvider>
+          <DynamicFavicon />
           <SiteLayout>{children}</SiteLayout>
         </QueryProvider>
       </body>
