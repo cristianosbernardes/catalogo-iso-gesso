@@ -84,6 +84,14 @@ function normalizeProduto(raw: any): ProdutoBase {
   return p as ProdutoBase
 }
 
+export interface Categoria {
+  id: string
+  nome: string
+  descricao: string
+  icon_key: string
+  ordem: number
+}
+
 export const api = {
   catalogo: {
     listar: async () => {
@@ -93,6 +101,16 @@ export const api = {
     buscar: async (slug: string) => {
       const raw = await apiGetPublic<any>(`/api/produtos/slug/${slug}`)
       return normalizeProduto(raw)
+    },
+    populares: async (limit = 12) => {
+      const raw = await apiGetPublic<any[]>(`/api/produtos/popular?limit=${limit}`, 120)
+      return (raw || []).map((p: any) => normalizeProduto(p))
+    },
+  },
+  categorias: {
+    listar: async () => {
+      const raw = await apiGetPublic<any[]>('/api/categorias', 300)
+      return (raw || []).map((c: any) => keysToSnake<Categoria>(c))
     },
   },
 }

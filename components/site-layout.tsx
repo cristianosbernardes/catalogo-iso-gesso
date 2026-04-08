@@ -6,7 +6,7 @@ import { useState } from 'react'
 import { motion } from 'framer-motion'
 import { useBranding } from '@/hooks/useBranding'
 import {
-  Package, Phone, Heart, Menu, X, Volume2, Search, LogIn,
+  Package, Phone, Heart, Menu, X, Volume2, Search, LogIn, Home,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useCatalogContext } from '@/contexts/catalog-context'
@@ -20,6 +20,7 @@ export default function SiteLayout({ children }: { children: React.ReactNode }) 
   const { prefix, isInternal } = useCatalogContext()
 
   const navItems = [
+    { label: 'Início', href: `${prefix}`, icon: Home },
     { label: 'Produtos', href: `${prefix}/produtos`, icon: Package },
     { label: 'Favoritos', href: `${prefix}/favoritos`, icon: Heart },
     { label: 'Contato', href: `${prefix}/contato`, icon: Phone },
