@@ -30,7 +30,7 @@ export async function generateMetadata({
       openGraph: {
         title: produto.nome,
         description: produto.especificacao || `${produto.nome} — ${produto.categoria}`,
-        url: `https://catalogo.isogesso.com.br/produtos/${slug}`,
+        url: `https://catalogo.isogesso.com.br/p/produtos/${slug}`,
       },
     }
   } catch {

@@ -9,7 +9,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     produtosRoutes = produtos
       .filter((p) => p.public_slug)
       .map((p) => ({
-        url: `https://catalogo.isogesso.com.br/produtos/${p.public_slug}`,
+        url: `https://catalogo.isogesso.com.br/p/produtos/${p.public_slug}`,
         lastModified: new Date(p.updated_at),
         changeFrequency: 'weekly' as const,
         priority: 0.8,
@@ -20,8 +20,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   return [
     { url: 'https://catalogo.isogesso.com.br', lastModified: new Date(), priority: 1 },
-    { url: 'https://catalogo.isogesso.com.br/produtos', lastModified: new Date(), priority: 0.9 },
-    { url: 'https://catalogo.isogesso.com.br/contato', lastModified: new Date(), priority: 0.5 },
+    { url: 'https://catalogo.isogesso.com.br/p/produtos', lastModified: new Date(), priority: 0.9 },
+    { url: 'https://catalogo.isogesso.com.br/p/contato', lastModified: new Date(), priority: 0.5 },
     ...produtosRoutes,
   ]
 }

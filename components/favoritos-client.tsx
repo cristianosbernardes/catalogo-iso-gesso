@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { useFavoritos } from '@/hooks/useFavoritos'
+import { useCatalogContext } from '@/contexts/catalog-context'
 
 const fadeIn = {
   initial: { opacity: 0, y: 16 },
@@ -16,6 +17,7 @@ const fadeIn = {
 
 export function FavoritosClient() {
   const { favoritos, removeFavorito, clearFavoritos, count } = useFavoritos()
+  const { prefix, isInternal } = useCatalogContext()
 
   return (
     <div className="bg-background">
@@ -79,7 +81,7 @@ export function FavoritosClient() {
                   <div className="flex items-center gap-4 p-4">
                     {/* Image */}
                     <Link
-                      href={`/produtos/${fav.slug}`}
+                      href={`${prefix}/produtos/${fav.slug}`}
                       className="shrink-0 h-16 w-16 rounded-lg overflow-hidden bg-muted/30 border border-border flex items-center justify-center"
                     >
                       {fav.imageUrl ? (
@@ -96,7 +98,7 @@ export function FavoritosClient() {
                           {fav.categoria}
                         </Badge>
                       </div>
-                      <Link href={`/produtos/${fav.slug}`}>
+                      <Link href={`${prefix}/produtos/${fav.slug}`}>
                         <p className="text-sm font-semibold text-foreground truncate hover:text-primary transition-colors">
                           {fav.nome}
                         </p>
@@ -105,7 +107,7 @@ export function FavoritosClient() {
 
                     {/* Actions */}
                     <div className="flex items-center gap-1.5 shrink-0">
-                      <Link href={`/produtos/${fav.slug}`}>
+                      <Link href={`${prefix}/produtos/${fav.slug}`}>
                         <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
                           <ExternalLink className="h-4 w-4" />
                         </Button>

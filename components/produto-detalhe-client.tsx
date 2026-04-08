@@ -10,6 +10,7 @@ import {
   Package, ChevronLeft, Layers, Ruler, Wrench, Disc, Sparkles,
   Volume2, Thermometer, ShieldCheck, Palette, BoxSelect,
 } from 'lucide-react'
+import { useCatalogContext } from '@/contexts/catalog-context'
 import type { ProdutoBase } from '@/types'
 
 const fadeIn = {
@@ -41,6 +42,7 @@ interface Props {
 }
 
 export function ProdutoDetalheClient({ produto: p }: Props) {
+  const { prefix, isInternal } = useCatalogContext()
   const specs =
     p.produto_las ||
     p.produto_placas ||
@@ -54,7 +56,7 @@ export function ProdutoDetalheClient({ produto: p }: Props) {
       {/* Back */}
       <motion.div {...fadeIn}>
         <Link
-          href="/produtos"
+          href={`${prefix}/produtos`}
           className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors mb-6"
         >
           <ChevronLeft className="h-4 w-4" /> Voltar ao catálogo
@@ -84,7 +86,19 @@ export function ProdutoDetalheClient({ produto: p }: Props) {
               <Badge variant="secondary">{p.categoria}</Badge>
             </div>
             <h1 className="text-3xl font-bold text-foreground mb-2">{p.nome}</h1>
-            <p className="text-sm text-muted-foreground font-mono mb-4">{p.sku}</p>
+            <p className="text-sm text-muted-foreground font-mono mb-2">{p.sku}</p>
+
+            {isInternal && p.preco > 0 && (
+              <p className="text-xl font-bold mb-2" style={{ color: '#006DAA' }}>
+                R$ {Number(p.preco).toFixed(2)}
+              </p>
+            )}
+
+            {isInternal && (
+              <p className="text-sm text-muted-foreground mb-4">
+                Estoque: <span className="font-semibold text-foreground">{p.estoque} {p.unidade}</span>
+              </p>
+            )}
 
             {p.especificacao && (
               <p className="text-muted-foreground leading-relaxed">{p.especificacao}</p>
@@ -247,6 +261,31 @@ export function ProdutoDetalheClient({ produto: p }: Props) {
         </motion.div>
       )}
 
+      {/* Variantes (interno) */}
+      {isInternal && p.variantes && p.variantes.length > 0 && (
+        <motion.div {...fadeIn} transition={{ delay: 0.2, ease: 'easeOut' as const }}>
+          <h2 className="text-lg font-semibold mb-4">Variantes</h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 mb-8">
+            {p.variantes.filter((v) => v.ativo).map((v) => (
+              <div key={v.id} className="rounded-xl border border-border bg-card p-4 space-y-1">
+                <div className="flex items-center gap-2">
+                  <Palette className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-sm font-medium">{v.cor}</span>
+                  {v.padrao && <Badge variant="secondary" className="text-[10px]">Padrão</Badge>}
+                </div>
+                {v.sku && <p className="text-xs text-muted-foreground font-mono">{v.sku}</p>}
+                <p className="text-base font-bold" style={{ color: '#006DAA' }}>
+                  R$ {Number(v.preco).toFixed(2)}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  Estoque: {v.estoque} {p.unidade}
+                </p>
+              </div>
+            ))}
+          </div>
+        </motion.div>
+      )}
+
       {/* CTA */}
       <motion.div {...fadeIn} transition={{ delay: 0.25, ease: 'easeOut' as const }}>
         <Card>
@@ -255,7 +294,7 @@ export function ProdutoDetalheClient({ produto: p }: Props) {
             <p className="text-muted-foreground text-sm mb-4">
               Entre em contato para orçamento personalizado.
             </p>
-            <Link href="/contato">
+            <Link href={`${prefix}/contato`}>
               <Button size="lg">Solicitar Orçamento</Button>
             </Link>
           </CardContent>

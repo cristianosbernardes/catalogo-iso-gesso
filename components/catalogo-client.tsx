@@ -8,6 +8,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { Package, Search, Layers, Ruler, Wrench, Disc, Sparkles } from 'lucide-react'
+import { useCatalogContext } from '@/contexts/catalog-context'
 import type { ProdutoBase } from '@/types'
 
 const fadeIn = {
@@ -32,6 +33,7 @@ export function CatalogoClient({ initialProdutos }: Props) {
   const [search, setSearch] = useState('')
   const searchParams = useSearchParams()
   const activeCategoria = searchParams.get('categoria') || 'Todos'
+  const { prefix, isInternal } = useCatalogContext()
 
   const produtos = initialProdutos
   const categorias = ['Todos', ...new Set(produtos.map((p) => p.categoria))]
@@ -71,8 +73,8 @@ export function CatalogoClient({ initialProdutos }: Props) {
                 key={cat}
                 href={
                   cat === 'Todos'
-                    ? '/produtos'
-                    : `/produtos?categoria=${encodeURIComponent(cat)}`
+                    ? `${prefix}/produtos`
+                    : `${prefix}/produtos?categoria=${encodeURIComponent(cat)}`
                 }
                 className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
                   activeCategoria === cat
@@ -92,7 +94,7 @@ export function CatalogoClient({ initialProdutos }: Props) {
       <motion.div {...fadeIn} transition={{ delay: 0.2, ease: 'easeOut' as const }}>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
           {filtered.map((p) => (
-            <Link key={p.id} href={`/produtos/${p.public_slug || p.id}`}>
+            <Link key={p.id} href={`${prefix}/produtos/${p.public_slug || p.id}`}>
               <Card className="h-full hover:shadow-lg transition-shadow cursor-pointer group">
                 <CardContent className="p-5">
                   <div className="flex h-32 items-center justify-center rounded-lg bg-muted/50 mb-4 overflow-hidden">
@@ -114,6 +116,11 @@ export function CatalogoClient({ initialProdutos }: Props) {
                     {p.nome}
                   </h3>
                   <p className="text-xs text-muted-foreground font-mono">{p.sku}</p>
+                  {isInternal && p.preco > 0 && (
+                    <p className="text-sm font-bold text-primary mt-2">
+                      R$ {Number(p.preco).toFixed(2)}
+                    </p>
+                  )}
                 </CardContent>
               </Card>
             </Link>

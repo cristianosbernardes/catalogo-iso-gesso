@@ -9,6 +9,7 @@ import {
   Package, Phone, Heart, Menu, X, Volume2, Search, LogIn,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { useCatalogContext } from '@/contexts/catalog-context'
 
 export default function SiteLayout({ children }: { children: React.ReactNode }) {
   const branding = useBranding('site')
@@ -16,17 +17,18 @@ export default function SiteLayout({ children }: { children: React.ReactNode }) 
   const [searchQuery, setSearchQuery] = useState('')
   const pathname = usePathname()
   const router = useRouter()
+  const { prefix, isInternal } = useCatalogContext()
 
   const navItems = [
-    { label: 'Produtos', href: '/produtos', icon: Package },
-    { label: 'Favoritos', href: '/favoritos', icon: Heart },
-    { label: 'Contato', href: '/contato', icon: Phone },
+    { label: 'Produtos', href: `${prefix}/produtos`, icon: Package },
+    { label: 'Favoritos', href: `${prefix}/favoritos`, icon: Heart },
+    { label: 'Contato', href: `${prefix}/contato`, icon: Phone },
   ]
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault()
     if (searchQuery.trim()) {
-      router.push(`/produtos?q=${encodeURIComponent(searchQuery.trim())}`)
+      router.push(`${prefix}/produtos?q=${encodeURIComponent(searchQuery.trim())}`)
       setSearchQuery('')
       setMobileMenuOpen(false)
     }
@@ -40,7 +42,7 @@ export default function SiteLayout({ children }: { children: React.ReactNode }) 
           <div className="flex items-center justify-between h-16">
             {/* Logo */}
             <Link
-              href="/produtos"
+              href={`${prefix}/produtos`}
               className="flex items-center gap-2.5 shrink-0 rounded-xl px-3 py-1.5"
               style={branding.hasCustomLogo && branding.bgEnabled ? { backgroundColor: branding.bgColor } : undefined}
             >
@@ -186,17 +188,17 @@ export default function SiteLayout({ children }: { children: React.ReactNode }) 
               <h4 className="text-sm font-semibold text-foreground mb-3">Navegação</h4>
               <ul className="space-y-2">
                 <li>
-                  <Link href="/produtos" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
+                  <Link href={`${prefix}/produtos`} className="text-sm text-muted-foreground hover:text-foreground transition-colors">
                     Produtos
                   </Link>
                 </li>
                 <li>
-                  <Link href="/contato" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
+                  <Link href={`${prefix}/contato`} className="text-sm text-muted-foreground hover:text-foreground transition-colors">
                     Contato
                   </Link>
                 </li>
                 <li>
-                  <Link href="/favoritos" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
+                  <Link href={`${prefix}/favoritos`} className="text-sm text-muted-foreground hover:text-foreground transition-colors">
                     Favoritos
                   </Link>
                 </li>
