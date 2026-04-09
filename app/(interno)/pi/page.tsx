@@ -1,9 +1,9 @@
 import { Suspense } from 'react'
-import { api, DEV_REVALIDATE } from '@/lib/api'
+import { api } from '@/lib/api'
 import { HomeClient } from '@/components/home-client'
 import type { Metadata } from 'next'
 
-export const revalidate = DEV_REVALIDATE ?? 120
+export const revalidate = 0
 
 export const metadata: Metadata = {
   title: 'ISO-GESSO | Catálogo Interno',

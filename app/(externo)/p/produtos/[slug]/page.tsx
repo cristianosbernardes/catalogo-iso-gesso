@@ -1,9 +1,9 @@
-import { api, DEV_REVALIDATE } from '@/lib/api'
+import { api } from '@/lib/api'
 import { notFound } from 'next/navigation'
 import { ProdutoDetalheClient } from '@/components/produto-detalhe-client'
 import type { Metadata } from 'next'
 
-export const revalidate = DEV_REVALIDATE ?? 300
+export const revalidate = 0
 
 const BASE_URL = 'https://catalogo.isogesso.com.br'
 
