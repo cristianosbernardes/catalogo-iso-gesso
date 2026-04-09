@@ -10,6 +10,7 @@ import {
   Package, ChevronRight, ChevronLeft, Layers, Ruler, Wrench, Disc, Sparkles, TrendingUp, ArrowRight,
 } from 'lucide-react'
 import { useCatalogContext } from '@/contexts/catalog-context'
+import { resolveCardPrice, formatBRL } from '@/lib/produto-card-price'
 import type { ProdutoBase } from '@/types'
 import type { Categoria } from '@/lib/api'
 
@@ -201,7 +202,7 @@ function ColecoesCarousel({ categorias, prefix }: { categorias: Categoria[]; pre
           {/* Scroll Container */}
           <div
             ref={scrollRef}
-            className="flex gap-4 overflow-x-auto scrollbar-hide scroll-smooth pb-2"
+            className="flex gap-4 overflow-x-auto scrollbar-hide scroll-smooth px-1 py-1"
             style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
           >
             {categorias.map((cat) => (
@@ -273,9 +274,9 @@ export function HomeClient({ populares, categorias, allProdutos }: Props) {
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                 {populares.slice(0, 8).map((p) => (
                   <Link key={p.id} href={`${prefix}/produtos/${p.public_slug || p.id}`}>
-                    <Card className="h-full hover:shadow-lg transition-shadow cursor-pointer group">
-                      <CardContent className="p-5">
-                        <div className="flex h-36 items-center justify-center rounded-lg bg-muted/50 mb-4 overflow-hidden">
+                    <Card className="w-full hover:shadow-lg transition-shadow cursor-pointer group py-0 gap-0">
+                      <div className="p-4">
+                        <div className="h-48 rounded-lg bg-muted/50 mb-4 overflow-hidden">
                           {p.produto_imagens && p.produto_imagens.length > 0 ? (
                             <img
                               src={p.produto_imagens[0].url}
@@ -284,22 +285,24 @@ export function HomeClient({ populares, categorias, allProdutos }: Props) {
                               loading="lazy"
                             />
                           ) : (
-                            <Package className="h-10 w-10 text-muted-foreground/40" />
+                            <div className="h-full flex items-center justify-center">
+                              <Package className="h-10 w-10 text-muted-foreground/40" />
+                            </div>
                           )}
                         </div>
-                        <Badge variant="secondary" className="mb-2 text-[10px]">
+                        <Badge variant="secondary" className="mb-2 text-[10px] self-start">
                           {p.categoria}
                         </Badge>
                         <h3 className="font-semibold text-sm text-foreground line-clamp-2 mb-1">
                           {p.nome}
                         </h3>
                         <p className="text-xs text-muted-foreground font-mono">{p.sku}</p>
-                        {isInternal && p.preco > 0 && (
+                        {isInternal && (
                           <p className="text-sm font-bold text-primary mt-2">
-                            R$ {Number(p.preco).toFixed(2)}
+                            {formatBRL(resolveCardPrice(p))}
                           </p>
                         )}
-                      </CardContent>
+                      </div>
                     </Card>
                   </Link>
                 ))}

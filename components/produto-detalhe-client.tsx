@@ -17,6 +17,7 @@ import {
 } from 'recharts'
 import { useCatalogContext } from '@/contexts/catalog-context'
 import { useFavoritos } from '@/hooks/useFavoritos'
+import { formatBRL } from '@/lib/produto-card-price'
 import type { ProdutoBase, ProdutoImagem } from '@/types'
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -214,10 +215,10 @@ function PriceDisplay({ variante, precoProduto }: PriceDisplayProps) {
       {precoPromo ? (
         <div className="flex items-baseline gap-2.5 flex-wrap">
           <span className="text-2xl font-bold" style={{ color: '#16a34a' }}>
-            R$ {Number(precoPromo).toFixed(2)}
+            {formatBRL(Number(precoPromo))}
           </span>
           <span className="text-base text-muted-foreground line-through">
-            R$ {Number(preco).toFixed(2)}
+            {formatBRL(Number(preco))}
           </span>
           <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-green-100 text-green-700">
             Promoção
@@ -225,7 +226,7 @@ function PriceDisplay({ variante, precoProduto }: PriceDisplayProps) {
         </div>
       ) : (
         <span className="text-2xl font-bold" style={{ color: '#006DAA' }}>
-          R$ {Number(preco).toFixed(2)}
+          {formatBRL(Number(preco))}
         </span>
       )}
     </div>
@@ -236,6 +237,7 @@ function PriceDisplay({ variante, precoProduto }: PriceDisplayProps) {
 
 function ImageGallery({ images, nome }: { images: ProdutoImagem[]; nome: string }) {
   const [activeIdx, setActiveIdx] = useState(0)
+  const [lightboxOpen, setLightboxOpen] = useState(false)
 
   if (images.length === 0) {
     return (
@@ -253,7 +255,11 @@ function ImageGallery({ images, nome }: { images: ProdutoImagem[]; nome: string 
   return (
     <div className="space-y-3">
       {/* Main image */}
-      <div className="relative aspect-[4/3] w-full rounded-2xl bg-muted/50 overflow-hidden" style={{ maxHeight: 480 }}>
+      <div
+        className="relative aspect-[4/3] w-full rounded-2xl bg-muted/50 overflow-hidden cursor-zoom-in"
+        style={{ maxHeight: 480 }}
+        onClick={() => setLightboxOpen(true)}
+      >
         <motion.img
           key={activeImage.id}
           src={activeImage.url}
@@ -315,6 +321,83 @@ function ImageGallery({ images, nome }: { images: ProdutoImagem[]; nome: string 
             </button>
           ))}
         </div>
+      )}
+
+      {/* Lightbox */}
+      {lightboxOpen && (
+        <motion.div
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 backdrop-blur-sm"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          onClick={() => setLightboxOpen(false)}
+        >
+          {/* Close button */}
+          <button
+            onClick={() => setLightboxOpen(false)}
+            className="absolute top-4 right-4 w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition-colors z-10"
+            aria-label="Fechar"
+          >
+            <ChevronLeft className="h-5 w-5 rotate-[-90deg] hidden" />
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round">
+              <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+            </svg>
+          </button>
+
+          {/* Counter */}
+          <div className="absolute top-4 left-1/2 -translate-x-1/2 px-3 py-1 rounded-full bg-white/10 text-white text-sm font-medium tabular-nums">
+            {safeIdx + 1} / {images.length}
+          </div>
+
+          {/* Image */}
+          <motion.img
+            key={`lb-${activeImage.id}`}
+            src={activeImage.url}
+            alt={nome}
+            className="max-h-[85vh] max-w-[90vw] object-contain rounded-xl shadow-2xl"
+            initial={{ scale: 0.9, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            transition={{ duration: 0.2 }}
+            onClick={(e) => e.stopPropagation()}
+          />
+
+          {/* Prev / Next */}
+          {images.length > 1 && (
+            <>
+              <button
+                onClick={(e) => { e.stopPropagation(); setActiveIdx((i) => (i - 1 + images.length) % images.length) }}
+                className="absolute left-4 top-1/2 -translate-y-1/2 w-11 h-11 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition-colors"
+                aria-label="Imagem anterior"
+              >
+                <ChevronLeft className="h-6 w-6 text-white" />
+              </button>
+              <button
+                onClick={(e) => { e.stopPropagation(); setActiveIdx((i) => (i + 1) % images.length) }}
+                className="absolute right-4 top-1/2 -translate-y-1/2 w-11 h-11 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition-colors"
+                aria-label="Próxima imagem"
+              >
+                <ChevronRight className="h-6 w-6 text-white" />
+              </button>
+            </>
+          )}
+
+          {/* Thumbnails strip */}
+          {images.length > 1 && (
+            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2 px-4 overflow-x-auto max-w-[90vw]">
+              {images.map((img, i) => (
+                <button
+                  key={img.id}
+                  onClick={(e) => { e.stopPropagation(); setActiveIdx(i) }}
+                  className={`shrink-0 w-14 h-14 rounded-lg overflow-hidden border-2 transition-all ${
+                    i === safeIdx ? 'border-white scale-110' : 'border-white/30 hover:border-white/60'
+                  }`}
+                >
+                  <img src={img.url} alt={`${nome} ${i + 1}`} className="w-full h-full object-cover" />
+                </button>
+              ))}
+            </div>
+          )}
+        </motion.div>
       )}
     </div>
   )
@@ -386,7 +469,6 @@ export function ProdutoDetalheClient({ produto: p }: Props) {
   const handleColorSelect = useCallback((cor: string) => {
     if (selectedColor === cor) {
       setSelectedColor(null)
-      setSelectedVarianteId(null)
       return
     }
     setSelectedColor(cor)

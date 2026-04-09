@@ -1,9 +1,9 @@
 import { Suspense } from 'react'
-import { api } from '@/lib/api'
+import { api, DEV_REVALIDATE } from '@/lib/api'
 import { CatalogoClient } from '@/components/catalogo-client'
 import type { Metadata } from 'next'
 
-export const revalidate = 60
+export const revalidate = DEV_REVALIDATE ?? 60
 
 export const metadata: Metadata = {
   title: 'Catálogo de Produtos',

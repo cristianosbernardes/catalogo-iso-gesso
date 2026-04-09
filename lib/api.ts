@@ -9,8 +9,8 @@
  *
  * ## Cache (Next.js Data Cache)
  * Todas as chamadas server-side passam por `apiGetPublic`, que usa `next: { revalidate }`.
- * Em desenvolvimento o revalidate é forçado a 0 (sem cache), para que mudanças feitas
- * no CRM apareçam imediatamente sem precisar reiniciar o servidor.
+ * Em desenvolvimento usa `cache: 'no-store'` (sem cache algum), para que mudanças feitas
+ * no CRM apareçam imediatamente ao recarregar a página, sem reiniciar o servidor.
  * Em produção os tempos abaixo se aplicam:
  *
  * | Endpoint                     | revalidate |
@@ -33,6 +33,15 @@ export const CDN_URL = process.env.NEXT_PUBLIC_CDN_URL || 'http://localhost:8787
 
 // Em dev, desativa o cache para refletir mudanças do CRM em tempo real.
 const isDev = process.env.NODE_ENV === 'development'
+
+/**
+ * Use este valor nas páginas server-side:
+ *   export const revalidate = DEV_REVALIDATE ?? 60
+ *
+ * Em dev retorna 0 (sem cache). Em produção retorna undefined e cada
+ * página usa seu próprio valor de revalidate.
+ */
+export const DEV_REVALIDATE: number | undefined = isDev ? 0 : undefined
 
 // ---------------------------------------------------------------------------
 // Helpers de serialização
@@ -61,13 +70,14 @@ function keysToSnake<T>(obj: unknown): T {
 
 /**
  * Fetch server-side com cache controlado pelo Next.js Data Cache.
- * Em dev: sem cache (revalidate = 0).
- * Em produção: usa o `revalidate` informado pelo chamador.
+ * Em dev: `cache: 'no-store'` — sempre busca da API, sem cache algum.
+ * Em produção: usa `next: { revalidate }` para ISR.
  */
 async function apiGetPublic<T>(path: string, revalidate = 300): Promise<T> {
-  const res = await fetch(`${API_URL}${path}`, {
-    next: { revalidate: isDev ? 0 : revalidate },
-  })
+  const res = await fetch(`${API_URL}${path}`, isDev
+    ? { cache: 'no-store' }
+    : { next: { revalidate } }
+  )
   if (!res.ok) throw new Error(`API error ${res.status}: ${path}`)
   return res.json()
 }

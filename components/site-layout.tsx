@@ -5,13 +5,15 @@ import { usePathname, useRouter } from 'next/navigation'
 import { useState } from 'react'
 import { motion } from 'framer-motion'
 import { useBranding } from '@/hooks/useBranding'
+import { useFavoritos } from '@/hooks/useFavoritos'
 import {
-  Package, Phone, Heart, Menu, X, Volume2, Search, LogIn, Home,
+  Package, Phone, Heart, Menu, X, Search, LogIn, Home,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 
 export default function SiteLayout({ children }: { children: React.ReactNode }) {
   const branding = useBranding('site')
+  const { count: favCount } = useFavoritos()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const pathname = usePathname()
@@ -45,26 +47,15 @@ export default function SiteLayout({ children }: { children: React.ReactNode }) 
             {/* Logo */}
             <Link
               href={prefix}
-              className="flex items-center gap-2.5 shrink-0 rounded-xl px-3 py-1.5"
-              style={branding.hasCustomLogo && branding.bgEnabled ? { backgroundColor: branding.bgColor } : undefined}
+              className="flex items-center gap-2.5 shrink-0 bg-[#FFF100] rounded-xl px-3 py-1.5"
             >
-              {branding.hasCustomLogo && branding.logoUrl ? (
-                <img
-                  src={branding.logoUrl}
-                  alt={branding.appName}
-                  style={{ height: branding.logoSize, width: branding.logoSize }}
-                  className="object-contain"
-                />
-              ) : (
-                <Volume2 className="h-7 w-7 shrink-0 text-primary" />
-              )}
-              <span
-                className="font-bold tracking-tight"
-                style={branding.hasCustomLogo ? { fontSize: branding.appNameSize, color: branding.textColor } : undefined}
-              >
-                {branding.hasCustomLogo ? branding.appName : (
-                  <>ISO<span className="text-primary font-extrabold">-GESSO</span></>
-                )}
+              <img
+                src="/logo-isogesso.svg"
+                alt="ISO-GESSO"
+                className="h-8 w-auto"
+              />
+              <span className="font-extrabold tracking-tight text-lg leading-none" style={{ color: '#006DAA' }}>
+                ISO-GESSO
               </span>
             </Link>
 
@@ -83,11 +74,12 @@ export default function SiteLayout({ children }: { children: React.ReactNode }) 
               <nav className="flex items-center gap-1.5">
                 {navItems.map((item) => {
                   const isActive = pathname === item.href
+                  const isFav = item.label === 'Favoritos'
                   return (
                     <Link
                       key={item.href}
                       href={item.href}
-                      className={`flex items-center gap-2 px-3.5 py-2 rounded-lg text-sm font-medium border transition-all ${
+                      className={`relative flex items-center gap-2 px-3.5 py-2 rounded-lg text-sm font-medium border transition-all ${
                         isActive
                           ? 'bg-primary text-primary-foreground border-primary shadow-sm'
                           : 'text-muted-foreground border-border hover:text-foreground hover:bg-accent/30 hover:border-accent'
@@ -95,6 +87,11 @@ export default function SiteLayout({ children }: { children: React.ReactNode }) 
                     >
                       <item.icon className="h-4 w-4" />
                       {item.label}
+                      {isFav && favCount > 0 && (
+                        <span className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] px-1 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center leading-none">
+                          {favCount > 99 ? '99+' : favCount}
+                        </span>
+                      )}
                     </Link>
                   )
                 })}
@@ -118,17 +115,25 @@ export default function SiteLayout({ children }: { children: React.ReactNode }) 
               exit={{ opacity: 0, height: 0 }}
               className="md:hidden border-t border-border py-3 space-y-1"
             >
-              {navItems.map((item) => (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  onClick={() => setMobileMenuOpen(false)}
-                  className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
-                >
-                  <item.icon className="h-4 w-4" />
-                  {item.label}
-                </Link>
-              ))}
+              {navItems.map((item) => {
+                const isFav = item.label === 'Favoritos'
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="relative flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+                  >
+                    <item.icon className="h-4 w-4" />
+                    {item.label}
+                    {isFav && favCount > 0 && (
+                      <span className="ml-auto min-w-[20px] h-5 px-1.5 rounded-full bg-red-500 text-white text-[11px] font-bold flex items-center justify-center">
+                        {favCount > 99 ? '99+' : favCount}
+                      </span>
+                    )}
+                  </Link>
+                )
+              })}
               <form onSubmit={handleSearch} className="relative px-3 pt-2">
                 <Search className="absolute left-6 top-1/2 translate-y-[-25%] h-4 w-4 text-muted-foreground pointer-events-none" />
                 <input
@@ -154,31 +159,12 @@ export default function SiteLayout({ children }: { children: React.ReactNode }) 
             {/* Brand */}
             <div className="md:col-span-2">
               <div className="flex items-center gap-2.5 mb-3">
-                {branding.hasCustomLogo && branding.logoUrl ? (
-                  <img
-                    src={branding.logoUrl}
-                    alt={branding.appName}
-                    style={{
-                      height: Math.min(branding.logoSize, 32),
-                      width: Math.min(branding.logoSize, 32),
-                    }}
-                    className="object-contain"
-                  />
-                ) : (
-                  <Volume2 className="h-6 w-6 shrink-0 text-primary" />
-                )}
-                <span
-                  className="font-bold tracking-tight"
-                  style={
-                    branding.hasCustomLogo
-                      ? { fontSize: Math.min(branding.appNameSize, 18), color: branding.textColor }
-                      : undefined
-                  }
-                >
-                  {branding.hasCustomLogo ? branding.appName : (
-                    <>ISO<span className="text-primary font-extrabold">-GESSO</span></>
-                  )}
-                </span>
+                <div className="flex items-center gap-2 bg-[#FFF100] rounded-xl px-2.5 py-1">
+                  <img src="/logo-isogesso.svg" alt="ISO-GESSO" className="h-6 w-auto" />
+                  <span className="font-extrabold tracking-tight text-base leading-none" style={{ color: '#006DAA' }}>
+                    ISO-GESSO
+                  </span>
+                </div>
               </div>
               <p className="text-sm text-muted-foreground max-w-sm">
                 Soluções em isolamento acústico e materiais de alta performance para construção civil.
