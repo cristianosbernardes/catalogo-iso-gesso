@@ -5,6 +5,8 @@ import type { Metadata } from 'next'
 
 export const revalidate = 300
 
+const BASE_URL = 'https://catalogo.isogesso.com.br'
+
 export async function generateStaticParams() {
   try {
     const produtos = await api.catalogo.listar()
@@ -30,7 +32,7 @@ export async function generateMetadata({
       openGraph: {
         title: produto.nome,
         description: produto.especificacao || `${produto.nome} — ${produto.categoria}`,
-        url: `https://catalogo.isogesso.com.br/p/produtos/${slug}`,
+        url: `${BASE_URL}/p/produtos/${slug}`,
       },
     }
   } catch {
@@ -46,7 +48,47 @@ export default async function ProdutoSlugPage({
   const { slug } = await params
   try {
     const produto = await api.catalogo.buscar(slug)
-    return <ProdutoDetalheClient produto={produto} />
+
+    const breadcrumbSchema = {
+      '@context': 'https://schema.org',
+      '@type': 'BreadcrumbList',
+      itemListElement: [
+        {
+          '@type': 'ListItem',
+          position: 1,
+          name: 'ISO-GESSO',
+          item: `${BASE_URL}/p`,
+        },
+        {
+          '@type': 'ListItem',
+          position: 2,
+          name: 'Produtos',
+          item: `${BASE_URL}/p/produtos`,
+        },
+        {
+          '@type': 'ListItem',
+          position: 3,
+          name: produto.categoria,
+          item: `${BASE_URL}/p/produtos?categoria=${encodeURIComponent(produto.categoria)}`,
+        },
+        {
+          '@type': 'ListItem',
+          position: 4,
+          name: produto.nome,
+          item: `${BASE_URL}/p/produtos/${slug}`,
+        },
+      ],
+    }
+
+    return (
+      <>
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbSchema) }}
+        />
+        <ProdutoDetalheClient produto={produto} />
+      </>
+    )
   } catch {
     notFound()
   }

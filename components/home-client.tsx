@@ -51,7 +51,7 @@ function HeroBanner({ produtos, prefix }: { produtos: ProdutoBase[]; prefix: str
   if (bannerItems.length === 0) {
     return (
       <section className="relative bg-gradient-to-br from-primary/10 via-background to-accent/5 py-20">
-        <div className="max-w-screen-xl 2xl:max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <h1 className="text-4xl md:text-5xl font-bold text-foreground mb-4">
             Soluções em <span className="text-primary">Isolamento Acústico</span>
           </h1>
@@ -72,7 +72,7 @@ function HeroBanner({ produtos, prefix }: { produtos: ProdutoBase[]; prefix: str
 
   return (
     <section className="relative overflow-hidden bg-gradient-to-br from-primary/5 via-background to-accent/5">
-      <div className="max-w-screen-xl 2xl:max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-8 py-12 md:py-20">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 md:py-20">
         <div className="flex flex-col md:flex-row items-center gap-8 md:gap-12">
           {/* Text */}
           <motion.div
@@ -174,7 +174,7 @@ function ColecoesCarousel({ categorias, prefix }: { categorias: Categoria[]; pre
   }
 
   return (
-    <section className="max-w-screen-xl 2xl:max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+    <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
       <motion.div {...fadeIn}>
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-2xl font-bold text-foreground">Coleções</h2>
@@ -254,7 +254,7 @@ export function HomeClient({ populares, categorias, allProdutos }: Props) {
       {/* Produtos Mais Vendidos */}
       {populares.length > 0 && (
         <section className="bg-muted/30 py-12">
-          <div className="max-w-screen-xl 2xl:max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <motion.div {...fadeIn}>
               <div className="flex items-center justify-between mb-6">
                 <div className="flex items-center gap-2">
@@ -310,7 +310,7 @@ export function HomeClient({ populares, categorias, allProdutos }: Props) {
       )}
 
       {/* CTA Final */}
-      <section className="max-w-screen-xl 2xl:max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
         <motion.div {...fadeIn}>
           <Card className="bg-gradient-to-r from-primary/5 to-accent/5">
             <CardContent className="p-8 md:p-12 text-center">

@@ -1,44 +1,92 @@
 'use client'
 
 import { useEffect } from 'react'
-import { apiClient, CDN_URL } from '@/lib/api'
+import { apiClient } from '@/lib/api'
 
-const BUCKET = 'identidade-visual'
-const LOGO_FOLDER = 'icone-logo'
+interface BrandingFavicon {
+  faviconUrl: string | null
+  faviconBgEnabled: boolean
+  faviconBgColor: string
+}
 
-interface StorageFile {
-  key: string
-  size: number
-  url: string
+function applyFavicon(href: string, isSvg: boolean) {
+  document.querySelectorAll('link[rel*="icon"]').forEach((el) => el.remove())
+
+  const link = document.createElement('link')
+  link.rel = 'icon'
+  link.href = href
+  link.type = isSvg ? 'image/svg+xml' : 'image/png'
+  document.head.appendChild(link)
+
+  const apple = document.createElement('link')
+  apple.rel = 'apple-touch-icon'
+  apple.href = href
+  document.head.appendChild(apple)
+}
+
+async function compositeOnBackground(imageUrl: string, bgColor: string): Promise<string> {
+  // Fetch as blob to avoid canvas taint issues with cross-origin images (including SVGs)
+  const res = await fetch(imageUrl)
+  const blob = await res.blob()
+  const blobUrl = URL.createObjectURL(blob)
+
+  return new Promise((resolve, reject) => {
+    const img = new Image()
+    img.onload = () => {
+      const size = 64
+      const radius = 10
+      const padding = 8
+      const canvas = document.createElement('canvas')
+      canvas.width = size
+      canvas.height = size
+      const ctx = canvas.getContext('2d')!
+
+      // Fundo com cantos arredondados
+      ctx.beginPath()
+      ctx.moveTo(radius, 0)
+      ctx.lineTo(size - radius, 0)
+      ctx.quadraticCurveTo(size, 0, size, radius)
+      ctx.lineTo(size, size - radius)
+      ctx.quadraticCurveTo(size, size, size - radius, size)
+      ctx.lineTo(radius, size)
+      ctx.quadraticCurveTo(0, size, 0, size - radius)
+      ctx.lineTo(0, radius)
+      ctx.quadraticCurveTo(0, 0, radius, 0)
+      ctx.closePath()
+      ctx.fillStyle = bgColor
+      ctx.fill()
+
+      // Ícone com padding (margem interna)
+      const iconSize = size - padding * 2
+      ctx.drawImage(img, padding, padding, iconSize, iconSize)
+
+      URL.revokeObjectURL(blobUrl)
+      resolve(canvas.toDataURL('image/png'))
+    }
+    img.onerror = () => {
+      URL.revokeObjectURL(blobUrl)
+      reject(new Error('Failed to load favicon image'))
+    }
+    img.src = blobUrl
+  })
 }
 
 export function DynamicFavicon() {
   useEffect(() => {
     async function loadFavicon() {
       try {
-        const files = await apiClient<StorageFile[]>(
-          `/api/storage/${BUCKET}/${LOGO_FOLDER}`,
-          { params: { list: 'true' } }
-        )
-        const favicon = files?.find((f) => f.key.startsWith('logo-site'))
-        if (favicon) {
-          const url = `${CDN_URL}/${BUCKET}/${LOGO_FOLDER}/${favicon.key}?t=${Date.now()}`
+        const branding = await apiClient<BrandingFavicon>('/api/branding/favicon')
 
-          // Remove existing favicons
-          document.querySelectorAll('link[rel*="icon"]').forEach((el) => el.remove())
+        if (!branding?.faviconUrl) return
 
-          // Add new favicon
-          const link = document.createElement('link')
-          link.rel = 'icon'
-          link.href = url
-          link.type = favicon.key.endsWith('.svg') ? 'image/svg+xml' : 'image/png'
-          document.head.appendChild(link)
+        const url = `${branding.faviconUrl}?t=${Date.now()}`
+        const isSvg = branding.faviconUrl.toLowerCase().endsWith('.svg')
 
-          // Apple touch icon
-          const apple = document.createElement('link')
-          apple.rel = 'apple-touch-icon'
-          apple.href = url
-          document.head.appendChild(apple)
+        if (branding.faviconBgEnabled && branding.faviconBgColor) {
+          const dataUrl = await compositeOnBackground(url, branding.faviconBgColor)
+          applyFavicon(dataUrl, false)
+        } else {
+          applyFavicon(url, isSvg)
         }
       } catch {
         // Silently fail — keep default or no favicon

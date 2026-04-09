@@ -9,7 +9,6 @@ import {
   Package, Phone, Heart, Menu, X, Volume2, Search, LogIn, Home,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { useCatalogContext } from '@/contexts/catalog-context'
 
 export default function SiteLayout({ children }: { children: React.ReactNode }) {
   const branding = useBranding('site')
@@ -17,7 +16,9 @@ export default function SiteLayout({ children }: { children: React.ReactNode }) 
   const [searchQuery, setSearchQuery] = useState('')
   const pathname = usePathname()
   const router = useRouter()
-  const { prefix, isInternal } = useCatalogContext()
+  // Derive prefix from pathname — SiteLayout is outside CatalogProvider
+  const prefix = pathname.startsWith('/pi') ? '/pi' : '/p'
+  const isInternal = pathname.startsWith('/pi')
 
   const navItems = [
     { label: 'Início', href: `${prefix}`, icon: Home },
@@ -39,7 +40,7 @@ export default function SiteLayout({ children }: { children: React.ReactNode }) 
     <div className="min-h-screen flex flex-col bg-background">
       {/* Header */}
       <header className="sticky top-0 z-50 border-b border-border bg-card/95 backdrop-blur-md">
-        <div className="max-w-screen-xl 2xl:max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             {/* Logo */}
             <Link
@@ -148,7 +149,7 @@ export default function SiteLayout({ children }: { children: React.ReactNode }) 
 
       {/* Footer */}
       <footer className="border-t border-border bg-card">
-        <div className="max-w-screen-xl 2xl:max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
           <div className="grid grid-cols-1 md:grid-cols-5 gap-8">
             {/* Brand */}
             <div className="md:col-span-2">
@@ -211,12 +212,12 @@ export default function SiteLayout({ children }: { children: React.ReactNode }) 
               <h4 className="text-sm font-semibold text-foreground mb-3">Legal</h4>
               <ul className="space-y-2">
                 <li>
-                  <Link href="/privacidade" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
+                  <Link href={`${prefix}/privacidade`} className="text-sm text-muted-foreground hover:text-foreground transition-colors">
                     Política de Privacidade
                   </Link>
                 </li>
                 <li>
-                  <Link href="/termos" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
+                  <Link href={`${prefix}/termos`} className="text-sm text-muted-foreground hover:text-foreground transition-colors">
                     Termos de Serviço
                   </Link>
                 </li>

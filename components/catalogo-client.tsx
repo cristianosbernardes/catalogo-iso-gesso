@@ -47,7 +47,7 @@ export function CatalogoClient({ initialProdutos }: Props) {
   })
 
   return (
-    <div className="max-w-screen-xl 2xl:max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
       <motion.div {...fadeIn}>
         <h1 className="text-3xl font-bold text-foreground mb-2">Catálogo de Produtos</h1>
         <p className="text-muted-foreground mb-8">

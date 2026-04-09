@@ -1,41 +1,326 @@
 'use client'
 
+import { useState, useCallback } from 'react'
 import { motion } from 'framer-motion'
 import Link from 'next/link'
-import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
 import {
-  Package, ChevronLeft, Layers, Ruler, Wrench, Disc, Sparkles,
+  Package, ChevronLeft, ChevronRight, Layers, Ruler, Wrench, Disc, Sparkles,
   Volume2, Thermometer, ShieldCheck, Palette, BoxSelect,
+  Heart, Share2, Copy, Check, MapPin, BarChart3, Flame,
 } from 'lucide-react'
+import {
+  AreaChart, Area, XAxis, YAxis,
+  CartesianGrid, Tooltip, ResponsiveContainer,
+} from 'recharts'
 import { useCatalogContext } from '@/contexts/catalog-context'
-import type { ProdutoBase } from '@/types'
+import { useFavoritos } from '@/hooks/useFavoritos'
+import type { ProdutoBase, ProdutoImagem } from '@/types'
 
-const fadeIn = {
-  initial: { opacity: 0, y: 16 },
-  animate: { opacity: 1, y: 0 },
-  transition: { duration: 0.4, ease: 'easeOut' as const },
+// ─── Constants ────────────────────────────────────────────────────────────────
+
+const ALL_FREQS = ['63', '125', '250', '500', '1000', '2000', '4000', '8000'] as const
+type Freq = (typeof ALL_FREQS)[number]
+const FREQ_LABELS: Record<Freq, string> = {
+  '63': '63Hz', '125': '125Hz', '250': '250Hz', '500': '500Hz',
+  '1000': '1kHz', '2000': '2kHz', '4000': '4kHz', '8000': '8kHz',
 }
 
 const categoriaIcon: Record<string, React.ReactNode> = {
-  Lã: <Layers className="h-5 w-5" />,
-  Perfis: <Ruler className="h-5 w-5" />,
-  Parafusos: <Wrench className="h-5 w-5" />,
-  Placas: <Disc className="h-5 w-5" />,
-  Acessórios: <Sparkles className="h-5 w-5" />,
+  'Lã': <Layers className="h-4 w-4" />,
+  'Perfis': <Ruler className="h-4 w-4" />,
+  'Parafusos': <Wrench className="h-4 w-4" />,
+  'Placas': <Disc className="h-4 w-4" />,
+  'Acessórios': <Sparkles className="h-4 w-4" />,
+  'Revestimento Absorvedor': <Layers className="h-4 w-4" />,
 }
 
-const SpecCard = ({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) => (
-  <div className="rounded-xl border border-border bg-card p-4 space-y-1.5 hover:shadow-md transition-shadow">
-    <div className="flex items-center gap-2 text-muted-foreground">
-      {icon}
-      <span className="text-[12px] font-medium uppercase tracking-wider">{label}</span>
+// ─── SpecCard ─────────────────────────────────────────────────────────────────
+
+const SpecCard = ({
+  icon, label, value, sub,
+}: {
+  icon: React.ReactNode
+  label: string
+  value: string
+  sub?: string
+}) => (
+  <div className="rounded-xl border border-border bg-card p-4 space-y-1 hover:shadow-md transition-shadow">
+    <div className="flex items-center gap-1.5">
+      <span className="text-primary">{icon}</span>
+      <span className="text-[14px] font-semibold text-foreground">{label}</span>
     </div>
-    <p className="text-base font-bold text-foreground">{value}</p>
+    <p className="text-[12px] text-muted-foreground">{value}</p>
+    {sub && <p className="text-[11px] text-muted-foreground/70">{sub}</p>}
   </div>
 )
+
+// ─── AlphaChart ───────────────────────────────────────────────────────────────
+
+function AlphaChart({
+  alpha,
+  nrc,
+  classificacaoFogo,
+}: {
+  alpha: Record<string, number>
+  nrc?: string | null
+  classificacaoFogo?: string | null
+}) {
+  const [mode, setMode] = useState<'curvas' | 'barras'>('curvas')
+
+  const data = ALL_FREQS.map((f) => ({
+    freq: Number(f) >= 1000 ? `${Number(f) / 1000}kHz` : `${f}Hz`,
+    alpha: alpha[f] != null ? Number(alpha[f]) : 0,
+    rawFreq: f,
+  }))
+
+  const maxVal = Math.max(...data.map((d) => d.alpha), 0.01)
+  const bestEntry = data.reduce((best, d) => (d.alpha > best.alpha ? d : best), data[0])
+  const hasData = data.some((d) => d.alpha > 0)
+  const bandCount = data.filter((d) => d.alpha > 0).length
+
+  return (
+    <div className="rounded-xl border border-border bg-card overflow-hidden">
+      {/* Header */}
+      <div className="flex items-center justify-between px-5 py-4 border-b border-border">
+        <div className="flex flex-wrap items-center gap-2">
+          <BarChart3 className="h-4 w-4 text-primary shrink-0" />
+          <span className="text-sm font-semibold">Coeficientes de Absorção Sonora (α)</span>
+          {hasData && (
+            <span className="text-xs text-muted-foreground">
+              Melhor: {bestEntry.freq} (α = {bestEntry.alpha.toFixed(2)})
+            </span>
+          )}
+        </div>
+        {hasData && (
+          <div className="flex items-center gap-0.5 bg-muted rounded-lg p-0.5 shrink-0">
+            <button
+              onClick={() => setMode('curvas')}
+              className={`px-3 py-1 text-xs font-medium rounded-md transition-all ${
+                mode === 'curvas'
+                  ? 'bg-primary text-primary-foreground shadow-sm'
+                  : 'text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              Curvas
+            </button>
+            <button
+              onClick={() => setMode('barras')}
+              className={`px-3 py-1 text-xs font-medium rounded-md transition-all ${
+                mode === 'barras'
+                  ? 'bg-primary text-primary-foreground shadow-sm'
+                  : 'text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              Barras
+            </button>
+          </div>
+        )}
+      </div>
+
+      <div className="p-5 space-y-5">
+        {/* Summary cards */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+          {nrc && (
+            <div className="rounded-lg bg-muted/50 p-4 text-center">
+              <p className="text-xs text-muted-foreground mb-1">NRC</p>
+              <p className="text-3xl font-bold font-mono text-primary">{nrc}</p>
+              <p className="text-[10px] text-muted-foreground mt-1">Noise Reduction Coefficient</p>
+            </div>
+          )}
+          {classificacaoFogo && (
+            <div className="rounded-lg bg-muted/50 p-4 text-center">
+              <Flame className="h-5 w-5 mx-auto mb-1.5 text-destructive" />
+              <p className="text-sm font-semibold">{classificacaoFogo}</p>
+              <p className="text-[10px] text-muted-foreground mt-1">Classificação quanto ao Fogo</p>
+            </div>
+          )}
+          {hasData && (
+            <div className="rounded-lg bg-muted/50 p-4 text-center">
+              <BarChart3 className="h-5 w-5 mx-auto mb-1.5 text-primary/70" />
+              <p className="text-sm font-semibold">{bandCount} bandas</p>
+              <p className="text-[10px] text-muted-foreground mt-1">Curva de Desempenho (125Hz–4kHz)</p>
+            </div>
+          )}
+        </div>
+
+        {/* Chart */}
+        {hasData && (
+          mode === 'barras' ? (
+            <div className="space-y-2.5">
+              {data.map((d) => (
+                <div key={d.rawFreq} className="flex items-center gap-3">
+                  <span className="text-xs font-medium text-muted-foreground w-10 shrink-0">{d.freq}</span>
+                  <div className="flex-1 h-1.5 rounded-full bg-muted overflow-hidden">
+                    <div
+                      className="h-full rounded-full transition-all duration-700"
+                      style={{ width: `${(d.alpha / maxVal) * 100}%`, backgroundColor: '#006daa' }}
+                    />
+                  </div>
+                  <span className="text-xs font-mono text-muted-foreground w-8 text-right shrink-0">
+                    {d.alpha.toFixed(2)}
+                  </span>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <ResponsiveContainer width="100%" height={200}>
+              <AreaChart data={data} margin={{ top: 8, right: 8, left: -16, bottom: 0 }}>
+                <defs>
+                  <linearGradient id="alphaGradient" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%"  stopColor="#006daa" stopOpacity={0.4} />
+                    <stop offset="95%" stopColor="#006daa" stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" stroke="rgba(128,128,128,0.15)" vertical={false} />
+                <XAxis dataKey="freq" tick={{ fontSize: 11 }} axisLine={false} tickLine={false} />
+                <YAxis tick={{ fontSize: 11 }} axisLine={false} tickLine={false} />
+                <Tooltip formatter={(value) => [`α = ${Number(value).toFixed(2)}`, '']} />
+                <Area
+                  type="monotone"
+                  dataKey="alpha"
+                  stroke="#006daa"
+                  strokeWidth={2}
+                  fill="url(#alphaGradient)"
+                  fillOpacity={1}
+                  dot={false}
+                  activeDot={{ r: 5, fill: '#006daa', strokeWidth: 2, stroke: '#fff' }}
+                  animationDuration={1500}
+                />
+              </AreaChart>
+            </ResponsiveContainer>
+          )
+        )}
+      </div>
+    </div>
+  )
+}
+
+// ─── PriceDisplay ────────────────────────────────────────────────────────────
+
+interface PriceDisplayProps {
+  variante: { preco: number; preco_promocional?: number | null } | null
+  precoProduto: number
+}
+
+function PriceDisplay({ variante, precoProduto }: PriceDisplayProps) {
+  const preco = variante?.preco ?? precoProduto
+  const precoPromo = variante?.preco_promocional ?? null
+
+  return (
+    <div>
+      {precoPromo ? (
+        <div className="flex items-baseline gap-2.5 flex-wrap">
+          <span className="text-2xl font-bold" style={{ color: '#16a34a' }}>
+            R$ {Number(precoPromo).toFixed(2)}
+          </span>
+          <span className="text-base text-muted-foreground line-through">
+            R$ {Number(preco).toFixed(2)}
+          </span>
+          <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-green-100 text-green-700">
+            Promoção
+          </span>
+        </div>
+      ) : (
+        <span className="text-2xl font-bold" style={{ color: '#006DAA' }}>
+          R$ {Number(preco).toFixed(2)}
+        </span>
+      )}
+    </div>
+  )
+}
+
+// ─── ImageGallery ─────────────────────────────────────────────────────────────
+
+function ImageGallery({ images, nome }: { images: ProdutoImagem[]; nome: string }) {
+  const [activeIdx, setActiveIdx] = useState(0)
+
+  if (images.length === 0) {
+    return (
+      <div className="aspect-square w-full rounded-2xl bg-muted/50 flex items-center justify-center">
+        <Package className="h-16 w-16 text-muted-foreground/30" />
+      </div>
+    )
+  }
+
+  const safeIdx = Math.min(activeIdx, images.length - 1)
+  const activeImage = images[safeIdx]
+  const goPrev = () => setActiveIdx((i) => (i - 1 + images.length) % images.length)
+  const goNext = () => setActiveIdx((i) => (i + 1) % images.length)
+
+  return (
+    <div className="space-y-3">
+      {/* Main image */}
+      <div className="relative aspect-[4/3] w-full rounded-2xl bg-muted/50 overflow-hidden" style={{ maxHeight: 480 }}>
+        <motion.img
+          key={activeImage.id}
+          src={activeImage.url}
+          alt={nome}
+          className="w-full h-full object-cover"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.2 }}
+        />
+
+        {/* Prev / Next arrows */}
+        {images.length > 1 && (
+          <>
+            <button
+              onClick={goPrev}
+              className="absolute left-3 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-white/80 backdrop-blur-sm shadow-md flex items-center justify-center hover:bg-white transition-colors"
+              aria-label="Imagem anterior"
+            >
+              <ChevronLeft className="h-5 w-5 text-foreground" />
+            </button>
+            <button
+              onClick={goNext}
+              className="absolute right-3 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-white/80 backdrop-blur-sm shadow-md flex items-center justify-center hover:bg-white transition-colors"
+              aria-label="Próxima imagem"
+            >
+              <ChevronRight className="h-5 w-5 text-foreground" />
+            </button>
+
+            {/* Counter — bottom right */}
+            <div className="absolute bottom-3 right-3 px-2.5 py-1 rounded-full bg-black/40 backdrop-blur-sm">
+              <span className="text-white text-xs font-medium tabular-nums">
+                {safeIdx + 1} / {images.length}
+              </span>
+            </div>
+          </>
+        )}
+      </div>
+
+      {/* Thumbnails — horizontal scroll, desktop and mobile */}
+      {images.length > 1 && (
+        <div className="flex gap-2 overflow-x-auto pb-1">
+          {images.map((img, i) => (
+            <button
+              key={img.id}
+              onClick={() => setActiveIdx(i)}
+              className={`aspect-square rounded-xl overflow-hidden border-2 shrink-0 w-16 transition-all ${
+                i === safeIdx
+                  ? 'border-primary shadow-md scale-[1.03]'
+                  : 'border-transparent hover:border-border'
+              }`}
+              aria-label={`Ver imagem ${i + 1}`}
+            >
+              <img
+                src={img.url}
+                alt={`${nome} — imagem ${i + 1}`}
+                className="w-full h-full object-cover"
+                loading="lazy"
+              />
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ─── Main Component ───────────────────────────────────────────────────────────
 
 interface Props {
   produto: ProdutoBase
@@ -43,262 +328,529 @@ interface Props {
 
 export function ProdutoDetalheClient({ produto: p }: Props) {
   const { prefix, isInternal } = useCatalogContext()
-  const specs =
+  const { isFavorito, toggleFavorito } = useFavoritos()
+
+  // Pre-select the default (or first) variant on load
+  const activeVariants = p.variantes?.filter((v) => v.ativo) ?? []
+  const defaultVariante = activeVariants.find((v) => v.padrao) ?? activeVariants[0] ?? null
+
+  const [selectedColor, setSelectedColor] = useState<string | null>(defaultVariante?.cor ?? null)
+  const [selectedAtributos, setSelectedAtributos] = useState<Record<string, string>>(
+    defaultVariante?.atributos ?? {}
+  )
+  const [copied, setCopied] = useState(false)
+
+  // Filter images by selected color
+  const allImages = p.produto_imagens ?? []
+  const coloredImages = selectedColor
+    ? allImages.filter((img) => img.cor === selectedColor)
+    : []
+  const filteredImages =
+    selectedColor && coloredImages.length > 0 ? coloredImages : allImages
+
+  // ── All attribute keys/values across EVERY variant (for always-visible matrix) ──
+  // Filter out generic keys like attr_0, attr_1 that indicate unnamed attributes in the CRM
+  const allAtributoKeys = [...new Set(activeVariants.flatMap((v) => Object.keys(v.atributos ?? {})))]
+    .filter((key) => !/^attr_\d+$/i.test(key))
+  const allAtributoValues: Record<string, string[]> = {}
+  for (const key of allAtributoKeys) {
+    allAtributoValues[key] = [...new Set(
+      activeVariants.map((v) => v.atributos?.[key]).filter((x): x is string => !!x)
+    )]
+  }
+
+  // ── Resolve variant from color + selected attributes ──
+  const resolvedVariante = activeVariants.find((v) => {
+    if (selectedColor && v.cor !== selectedColor) return false
+    return Object.entries(selectedAtributos).every(([k, val]) => v.atributos?.[k] === val)
+  }) ?? (selectedColor
+    ? activeVariants.find((v) => v.cor === selectedColor && v.padrao) ??
+      activeVariants.find((v) => v.cor === selectedColor) ??
+      null
+    : null)
+
+  // ── Availability checks for grayed-out state ──
+  const isColorAvailable = (cor: string): boolean => {
+    if (Object.keys(selectedAtributos).length === 0) return true
+    return activeVariants.some((v) =>
+      v.cor === cor &&
+      Object.entries(selectedAtributos).every(([k, val]) => v.atributos?.[k] === val)
+    )
+  }
+
+  const isAtributoValueAvailable = (key: string, value: string): boolean => {
+    if (!selectedColor) return activeVariants.some((v) => v.atributos?.[key] === value)
+    return activeVariants.some((v) => v.cor === selectedColor && v.atributos?.[key] === value)
+  }
+
+  const handleColorSelect = useCallback((cor: string) => {
+    if (selectedColor === cor) {
+      setSelectedColor(null)
+      setSelectedVarianteId(null)
+      return
+    }
+    setSelectedColor(cor)
+    // Keep attributes that are still valid for the new color; reset others
+    setSelectedAtributos((prev) => {
+      const variantsForNewColor = activeVariants.filter((v) => v.cor === cor)
+      if (variantsForNewColor.length === 0) return prev
+      // Try to find a variant that matches current attribute selection
+      const stillValid = variantsForNewColor.find((v) =>
+        Object.entries(prev).every(([k, val]) => v.atributos?.[k] === val)
+      )
+      if (stillValid) return prev
+      // Fall back to padrao or first variant of the new color
+      const fallback = variantsForNewColor.find((v) => v.padrao) ?? variantsForNewColor[0]
+      return fallback?.atributos ?? {}
+    })
+  }, [selectedColor, activeVariants])
+
+  const isFav = isFavorito(p.id)
+
+  const handleFavorite = useCallback(() => {
+    toggleFavorito({
+      productId: p.id,
+      slug: p.public_slug ?? p.id,
+      nome: p.nome,
+      categoria: p.categoria,
+      preco: p.preco,
+      imageUrl: allImages[0]?.url,
+      addedAt: new Date().toISOString(),
+    })
+  }, [p, allImages, toggleFavorito])
+
+  const handleShare = useCallback(async () => {
+    const url = p.public_share_url ?? window.location.href
+    if (navigator.share) {
+      await navigator.share({ title: p.nome, url }).catch(() => {})
+    } else {
+      await navigator.clipboard.writeText(url).catch(() => {})
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2500)
+    }
+  }, [p])
+
+  const handleCopy = useCallback(async () => {
+    const url = p.public_share_url ?? window.location.href
+    await navigator.clipboard.writeText(url).catch(() => {})
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2500)
+  }, [p])
+
+  // Alpha coefficients — present in lã, placa, revestimento
+  const alphaData =
+    p.produto_las?.alpha_coefficients ||
+    p.produto_placas?.alpha_coefficients ||
+    p.produto_revestimentos?.alpha_coefficients ||
+    null
+
+  const nrcValue =
+    p.produto_las?.nrc ||
+    p.produto_placas?.nrc ||
+    p.produto_revestimentos?.nrc ||
+    null
+
+  const classificacaoFogo =
+    p.classificacao_fogo ||
+    p.produto_revestimentos?.classificacao_fogo ||
+    null
+
+  const hasSpecs = !!(
     p.produto_las ||
     p.produto_placas ||
     p.produto_perfis ||
     p.produto_parafusos ||
     p.produto_acessorios ||
     p.produto_revestimentos
+  )
 
   return (
-    <div className="max-w-screen-xl 2xl:max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
-      {/* Back */}
-      <motion.div {...fadeIn}>
-        <Link
-          href={`${prefix}/produtos`}
-          className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors mb-6"
-        >
-          <ChevronLeft className="h-4 w-4" /> Voltar ao catálogo
-        </Link>
-      </motion.div>
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6">
+      {/* Breadcrumb */}
+      <motion.nav
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.3 }}
+        aria-label="Breadcrumb"
+        className="mb-4"
+      >
+        <ol className="flex items-center flex-wrap gap-1 text-sm text-muted-foreground">
+          <li>
+            <Link href={prefix} className="hover:text-foreground transition-colors">
+              Início
+            </Link>
+          </li>
+          <li><ChevronRight className="h-3.5 w-3.5 shrink-0" /></li>
+          <li>
+            <Link href={`${prefix}/produtos`} className="hover:text-foreground transition-colors">
+              Produtos
+            </Link>
+          </li>
+          <li><ChevronRight className="h-3.5 w-3.5 shrink-0" /></li>
+          <li>
+            <Link
+              href={`${prefix}/produtos?categoria=${encodeURIComponent(p.categoria)}`}
+              className="hover:text-foreground transition-colors"
+            >
+              {p.categoria}
+            </Link>
+          </li>
+          <li><ChevronRight className="h-3.5 w-3.5 shrink-0" /></li>
+          <li className="text-foreground font-medium truncate max-w-[200px] sm:max-w-xs" aria-current="page">
+            {p.nome}
+          </li>
+        </ol>
+      </motion.nav>
 
-      {/* Header */}
-      <motion.div {...fadeIn} transition={{ delay: 0.05, ease: 'easeOut' as const }}>
-        <div className="flex flex-col md:flex-row gap-8 mb-8">
-          {/* Image */}
-          <div className="w-full md:w-80 h-64 rounded-2xl bg-muted/50 flex items-center justify-center shrink-0 overflow-hidden">
-            {p.produto_imagens && p.produto_imagens.length > 0 ? (
-              <img
-                src={p.produto_imagens[0].url}
-                alt={p.nome}
-                className="w-full h-full object-cover rounded-2xl"
-              />
-            ) : (
-              <Package className="h-16 w-16 text-muted-foreground/30" />
-            )}
+      {/* ── Top section: gallery + info ── */}
+      <motion.div
+        initial={{ opacity: 0, y: 16 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4, delay: 0.05 }}
+        className="grid grid-cols-1 lg:grid-cols-5 gap-8 lg:gap-10 mb-12"
+      >
+        {/* Left — Gallery (60%) */}
+        <div className="lg:col-span-3">
+          <ImageGallery images={filteredImages} nome={p.nome} />
+        </div>
+
+        {/* Right — Info (40%) */}
+        <div className="lg:col-span-2 flex flex-col gap-3.5">
+          {/* Category + Name + SKU */}
+          <div>
+            <div className="flex items-center gap-2 mb-2">
+              {categoriaIcon[p.categoria] || <Package className="h-4 w-4 text-muted-foreground" />}
+              <Badge variant="secondary" className="text-xs">{p.categoria}</Badge>
+            </div>
+            <h1 className="text-xl sm:text-2xl font-bold text-foreground leading-tight mb-1">
+              {p.nome}
+            </h1>
+            <p className="text-sm text-muted-foreground font-mono">SKU: {p.sku}</p>
           </div>
 
-          {/* Info */}
-          <div className="flex-1">
-            <div className="flex items-center gap-2 mb-2">
-              {categoriaIcon[p.categoria] || <Package className="h-5 w-5 text-muted-foreground" />}
-              <Badge variant="secondary">{p.categoria}</Badge>
+          {/* Price — dynamic, internal only */}
+          {isInternal && (
+            <PriceDisplay
+              variante={resolvedVariante}
+              precoProduto={p.preco}
+            />
+          )}
+
+          <Separator />
+
+          {/* Action buttons */}
+          <div className="flex flex-wrap gap-2">
+            <Button
+              variant={isFav ? 'default' : 'outline'}
+              size="sm"
+              onClick={handleFavorite}
+              className="gap-1.5"
+            >
+              <Heart className={`h-4 w-4 ${isFav ? 'fill-current' : ''}`} />
+              {isFav ? 'Favoritado' : 'Favoritar'}
+            </Button>
+            <Button variant="outline" size="sm" onClick={handleShare} className="gap-1.5">
+              <Share2 className="h-4 w-4" />
+              Compartilhar
+            </Button>
+            <Button variant="outline" size="sm" onClick={handleCopy} className="gap-1.5">
+              {copied
+                ? <Check className="h-4 w-4 text-green-600" />
+                : <Copy className="h-4 w-4" />}
+              {copied ? 'Copiado!' : 'Copiar link'}
+            </Button>
+          </div>
+
+          {/* Color selector — all colors always visible, unavailable grayed */}
+          {p.cores.length > 0 && (
+            <div>
+              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2.5 flex items-center gap-1.5">
+                <Palette className="h-3.5 w-3.5" />
+                {selectedColor ? `Cor: ${selectedColor}` : 'Cores disponíveis'}
+              </p>
+              <div className="flex flex-wrap gap-1.5 max-h-28 overflow-y-auto pr-1">
+                {p.cores.map((cor) => {
+                  const available = isColorAvailable(cor)
+                  const selected = selectedColor === cor
+                  return (
+                    <button
+                      key={cor}
+                      onClick={() => available ? handleColorSelect(cor) : undefined}
+                      disabled={!available}
+                      className={`px-2.5 py-1 rounded-md text-xs border font-medium transition-all ${
+                        selected
+                          ? 'border-primary bg-primary/10 text-primary'
+                          : available
+                            ? 'border-border hover:border-primary/50 text-foreground bg-card cursor-pointer'
+                            : 'border-border/40 text-muted-foreground/40 bg-muted/30 cursor-not-allowed line-through'
+                      }`}
+                    >
+                      {cor}
+                    </button>
+                  )
+                })}
+              </div>
             </div>
-            <h1 className="text-3xl font-bold text-foreground mb-2">{p.nome}</h1>
-            <p className="text-sm text-muted-foreground font-mono mb-2">{p.sku}</p>
+          )}
 
-            {isInternal && p.preco > 0 && (
-              <p className="text-xl font-bold mb-2" style={{ color: '#006DAA' }}>
-                R$ {Number(p.preco).toFixed(2)}
-              </p>
-            )}
-
-            {isInternal && (
-              <p className="text-sm text-muted-foreground mb-4">
-                Estoque: <span className="font-semibold text-foreground">{p.estoque} {p.unidade}</span>
-              </p>
-            )}
-
-            {p.especificacao && (
-              <p className="text-muted-foreground leading-relaxed">{p.especificacao}</p>
-            )}
-
-            {p.cores.length > 0 && (
-              <div className="mt-4">
-                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">
-                  Cores disponíveis
+          {/* Attribute selectors — ALL keys/values always visible, unavailable grayed */}
+          {allAtributoKeys.map((key) => {
+            const values = allAtributoValues[key] ?? []
+            if (values.length === 0) return null
+            return (
+              <div key={key}>
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2.5">
+                  {key}
                 </p>
                 <div className="flex flex-wrap gap-2">
-                  {p.cores.map((cor) => (
-                    <Badge key={cor} variant="outline">
-                      <Palette className="h-3 w-3 mr-1" /> {cor}
-                    </Badge>
-                  ))}
+                  {values.map((val) => {
+                    const available = isAtributoValueAvailable(key, val)
+                    const selected = selectedAtributos[key] === val
+                    return (
+                      <button
+                        key={val}
+                        onClick={() =>
+                          available
+                            ? setSelectedAtributos((prev) => ({ ...prev, [key]: val }))
+                            : undefined
+                        }
+                        disabled={!available}
+                        className={`px-2.5 py-1 rounded-md text-xs border font-medium transition-all ${
+                          selected
+                            ? 'border-primary bg-primary/10 text-primary'
+                            : available
+                              ? 'border-border hover:border-primary/50 text-foreground bg-card cursor-pointer'
+                              : 'border-border/40 text-muted-foreground/40 bg-muted/30 cursor-not-allowed line-through'
+                        }`}
+                      >
+                        {val}
+                      </button>
+                    )
+                  })}
                 </div>
               </div>
-            )}
+            )
+          })}
 
-            {p.locais_instalacao.length > 0 && (
-              <div className="mt-4">
-                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">
-                  Locais de instalação
-                </p>
-                <div className="flex flex-wrap gap-2">
-                  {p.locais_instalacao.map((local) => (
-                    <Badge key={local} variant="outline">
-                      {local}
-                    </Badge>
-                  ))}
-                </div>
-              </div>
-            )}
+          {/* CTA */}
+          <div className="pt-2">
+            <Link href={`${prefix}/contato`}>
+              <Button size="lg" className="w-full">Solicitar Orçamento</Button>
+            </Link>
           </div>
         </div>
       </motion.div>
 
-      <Separator className="mb-8" />
+      {/* ── Bottom section: description + specs ── */}
+      <motion.div
+        initial={{ opacity: 0, y: 16 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4, delay: 0.15 }}
+        className="space-y-10"
+      >
+        <Separator />
 
-      {/* Specs */}
-      {specs && (
-        <motion.div {...fadeIn} transition={{ delay: 0.15, ease: 'easeOut' as const }}>
-          <h2 className="text-lg font-semibold mb-4">Especificações Técnicas</h2>
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-8">
-            {p.produto_las && (
-              <>
-                {p.produto_las.densidade && (
-                  <SpecCard icon={<BoxSelect className="h-4 w-4" />} label="Densidade" value={p.produto_las.densidade} />
-                )}
-                {p.produto_las.espessura && (
-                  <SpecCard icon={<Ruler className="h-4 w-4" />} label="Espessura" value={p.produto_las.espessura} />
-                )}
-                {p.produto_las.nrc && (
-                  <SpecCard icon={<Volume2 className="h-4 w-4" />} label="NRC" value={p.produto_las.nrc} />
-                )}
-                {p.produto_las.resistencia_termica && (
-                  <SpecCard
-                    icon={<Thermometer className="h-4 w-4" />}
-                    label="Resistência Térmica"
-                    value={p.produto_las.resistencia_termica}
-                  />
-                )}
-              </>
-            )}
-            {p.produto_placas && (
-              <>
-                {p.produto_placas.tipo && (
-                  <SpecCard icon={<Disc className="h-4 w-4" />} label="Tipo" value={p.produto_placas.tipo} />
-                )}
-                {p.produto_placas.espessura && (
-                  <SpecCard icon={<Ruler className="h-4 w-4" />} label="Espessura" value={p.produto_placas.espessura} />
-                )}
-                {p.produto_placas.dimensao && (
-                  <SpecCard icon={<BoxSelect className="h-4 w-4" />} label="Dimensão" value={p.produto_placas.dimensao} />
-                )}
-                {p.produto_placas.nrc && (
-                  <SpecCard icon={<Volume2 className="h-4 w-4" />} label="NRC" value={p.produto_placas.nrc} />
-                )}
-              </>
-            )}
-            {p.produto_revestimentos && (
-              <>
-                {p.produto_revestimentos.material && (
-                  <SpecCard icon={<Layers className="h-4 w-4" />} label="Material" value={p.produto_revestimentos.material} />
-                )}
-                {p.produto_revestimentos.acabamento && (
-                  <SpecCard icon={<Sparkles className="h-4 w-4" />} label="Acabamento" value={p.produto_revestimentos.acabamento} />
-                )}
-                {p.produto_revestimentos.formato && (
-                  <SpecCard icon={<BoxSelect className="h-4 w-4" />} label="Formato" value={p.produto_revestimentos.formato} />
-                )}
-                {p.produto_revestimentos.espessuras && (
-                  <SpecCard icon={<Ruler className="h-4 w-4" />} label="Espessuras" value={p.produto_revestimentos.espessuras} />
-                )}
-                {p.produto_revestimentos.nrc && (
-                  <SpecCard icon={<Volume2 className="h-4 w-4" />} label="NRC" value={p.produto_revestimentos.nrc} />
-                )}
-                {p.produto_revestimentos.tipo_fixacao && (
-                  <SpecCard icon={<Wrench className="h-4 w-4" />} label="Fixação" value={p.produto_revestimentos.tipo_fixacao} />
-                )}
-                {p.produto_revestimentos.composicao && (
-                  <SpecCard icon={<ShieldCheck className="h-4 w-4" />} label="Composição" value={p.produto_revestimentos.composicao} />
-                )}
-              </>
-            )}
-            {p.produto_perfis && (
-              <>
-                {p.produto_perfis.tipo && (
-                  <SpecCard icon={<Ruler className="h-4 w-4" />} label="Tipo" value={p.produto_perfis.tipo} />
-                )}
-                {p.produto_perfis.largura && (
-                  <SpecCard icon={<Ruler className="h-4 w-4" />} label="Largura" value={p.produto_perfis.largura} />
-                )}
-                {p.produto_perfis.comprimento && (
-                  <SpecCard icon={<Ruler className="h-4 w-4" />} label="Comprimento" value={p.produto_perfis.comprimento} />
-                )}
-                {p.produto_perfis.acabamento && (
-                  <SpecCard icon={<Sparkles className="h-4 w-4" />} label="Acabamento" value={p.produto_perfis.acabamento} />
-                )}
-              </>
-            )}
-            {p.produto_parafusos && (
-              <>
-                {p.produto_parafusos.tipo && (
-                  <SpecCard icon={<Wrench className="h-4 w-4" />} label="Tipo" value={p.produto_parafusos.tipo} />
-                )}
-                {p.produto_parafusos.diametro && (
-                  <SpecCard icon={<Disc className="h-4 w-4" />} label="Diâmetro" value={p.produto_parafusos.diametro} />
-                )}
-                {p.produto_parafusos.comprimento && (
-                  <SpecCard icon={<Ruler className="h-4 w-4" />} label="Comprimento" value={p.produto_parafusos.comprimento} />
-                )}
-                {p.produto_parafusos.material && (
-                  <SpecCard icon={<ShieldCheck className="h-4 w-4" />} label="Material" value={p.produto_parafusos.material} />
-                )}
-              </>
-            )}
-            {p.produto_acessorios && (
-              <>
-                {p.produto_acessorios.tipo && (
-                  <SpecCard icon={<Sparkles className="h-4 w-4" />} label="Tipo" value={p.produto_acessorios.tipo} />
-                )}
-                {p.produto_acessorios.aplicacao && (
-                  <SpecCard icon={<Wrench className="h-4 w-4" />} label="Aplicação" value={p.produto_acessorios.aplicacao} />
-                )}
-                {p.produto_acessorios.rendimento && (
-                  <SpecCard icon={<BoxSelect className="h-4 w-4" />} label="Rendimento" value={p.produto_acessorios.rendimento} />
-                )}
-              </>
-            )}
-            {p.classificacao_fogo && (
-              <SpecCard
-                icon={<ShieldCheck className="h-4 w-4" />}
-                label="Classificação Fogo"
-                value={p.classificacao_fogo}
-              />
-            )}
+        {/* Descrição */}
+        {p.especificacao && (
+          <div>
+            <h2 className="text-lg font-semibold mb-3">Descrição</h2>
+            <p className="text-muted-foreground leading-relaxed">{p.especificacao}</p>
           </div>
-        </motion.div>
-      )}
+        )}
 
-      {/* Variantes (interno) */}
-      {isInternal && p.variantes && p.variantes.length > 0 && (
-        <motion.div {...fadeIn} transition={{ delay: 0.2, ease: 'easeOut' as const }}>
-          <h2 className="text-lg font-semibold mb-4">Variantes</h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 mb-8">
-            {p.variantes.filter((v) => v.ativo).map((v) => (
-              <div key={v.id} className="rounded-xl border border-border bg-card p-4 space-y-1">
-                <div className="flex items-center gap-2">
-                  <Palette className="h-4 w-4 text-muted-foreground" />
-                  <span className="text-sm font-medium">{v.cor}</span>
-                  {v.padrao && <Badge variant="secondary" className="text-[10px]">Padrão</Badge>}
-                </div>
-                {v.sku && <p className="text-xs text-muted-foreground font-mono">{v.sku}</p>}
-                <p className="text-base font-bold" style={{ color: '#006DAA' }}>
-                  R$ {Number(v.preco).toFixed(2)}
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  Estoque: {v.estoque} {p.unidade}
-                </p>
-              </div>
-            ))}
+        {/* Especificações técnicas */}
+        {hasSpecs && (
+          <div>
+            <h2 className="text-lg font-semibold mb-4">Especificações Técnicas</h2>
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+              {p.produto_las && (
+                <>
+                  {p.produto_las.espessura && (
+                    <SpecCard icon={<Ruler className="h-4 w-4" />} label="Espessura" value={p.produto_las.espessura} />
+                  )}
+                  {p.produto_las.densidade && (
+                    <SpecCard icon={<BoxSelect className="h-4 w-4" />} label="Densidade" value={p.produto_las.densidade} />
+                  )}
+                  {p.produto_las.resistencia_termica && (
+                    <SpecCard icon={<Thermometer className="h-4 w-4" />} label="Resistência Térmica" value={p.produto_las.resistencia_termica} sub="Isolamento térmico" />
+                  )}
+                  {p.produto_las.nrc && (
+                    <SpecCard icon={<Volume2 className="h-4 w-4" />} label="NRC" value={p.produto_las.nrc} sub="Coeficiente de redução de ruído" />
+                  )}
+                </>
+              )}
+              {p.produto_placas && (
+                <>
+                  {p.produto_placas.tipo && (
+                    <SpecCard icon={<Disc className="h-4 w-4" />} label="Tipo" value={p.produto_placas.tipo} />
+                  )}
+                  {p.produto_placas.espessura && (
+                    <SpecCard icon={<Ruler className="h-4 w-4" />} label="Espessura" value={p.produto_placas.espessura} />
+                  )}
+                  {p.produto_placas.dimensao && (
+                    <SpecCard icon={<BoxSelect className="h-4 w-4" />} label="Dimensão" value={p.produto_placas.dimensao} />
+                  )}
+                  {p.produto_placas.peso && (
+                    <SpecCard icon={<BoxSelect className="h-4 w-4" />} label="Peso" value={p.produto_placas.peso} />
+                  )}
+                  {p.produto_placas.nrc && (
+                    <SpecCard icon={<Volume2 className="h-4 w-4" />} label="NRC" value={p.produto_placas.nrc} />
+                  )}
+                  {p.produto_placas.borda_modelo && (
+                    <SpecCard icon={<Sparkles className="h-4 w-4" />} label="Borda" value={p.produto_placas.borda_modelo} />
+                  )}
+                </>
+              )}
+              {p.produto_revestimentos && (
+                <>
+                  {p.produto_revestimentos.material && (
+                    <SpecCard icon={<Layers className="h-4 w-4" />} label="Material" value={p.produto_revestimentos.material} />
+                  )}
+                  {p.produto_revestimentos.acabamento && (
+                    <SpecCard icon={<Sparkles className="h-4 w-4" />} label="Acabamento" value={p.produto_revestimentos.acabamento} />
+                  )}
+                  {p.produto_revestimentos.formato && (
+                    <SpecCard icon={<BoxSelect className="h-4 w-4" />} label="Formato" value={p.produto_revestimentos.formato} />
+                  )}
+                  {p.produto_revestimentos.espessuras && (
+                    <SpecCard icon={<Ruler className="h-4 w-4" />} label="Espessuras" value={p.produto_revestimentos.espessuras} />
+                  )}
+                  {p.produto_revestimentos.densidade && (
+                    <SpecCard icon={<BoxSelect className="h-4 w-4" />} label="Densidade" value={p.produto_revestimentos.densidade} />
+                  )}
+                  {p.produto_revestimentos.nrc && (
+                    <SpecCard icon={<Volume2 className="h-4 w-4" />} label="NRC" value={p.produto_revestimentos.nrc} />
+                  )}
+                  {p.produto_revestimentos.tipo_fixacao && (
+                    <SpecCard icon={<Wrench className="h-4 w-4" />} label="Fixação" value={p.produto_revestimentos.tipo_fixacao} />
+                  )}
+                  {p.produto_revestimentos.composicao && (
+                    <SpecCard icon={<ShieldCheck className="h-4 w-4" />} label="Composição" value={p.produto_revestimentos.composicao} />
+                  )}
+                  {p.produto_revestimentos.sustentabilidade && (
+                    <SpecCard icon={<Sparkles className="h-4 w-4" />} label="Sustentabilidade" value={p.produto_revestimentos.sustentabilidade} />
+                  )}
+                  {p.produto_revestimentos.certificacoes && (
+                    <SpecCard icon={<ShieldCheck className="h-4 w-4" />} label="Certificações" value={p.produto_revestimentos.certificacoes} />
+                  )}
+                </>
+              )}
+              {p.produto_perfis && (
+                <>
+                  {p.produto_perfis.tipo && (
+                    <SpecCard icon={<Ruler className="h-4 w-4" />} label="Tipo" value={p.produto_perfis.tipo} />
+                  )}
+                  {p.produto_perfis.largura && (
+                    <SpecCard icon={<Ruler className="h-4 w-4" />} label="Largura" value={p.produto_perfis.largura} />
+                  )}
+                  {p.produto_perfis.comprimento && (
+                    <SpecCard icon={<Ruler className="h-4 w-4" />} label="Comprimento" value={p.produto_perfis.comprimento} />
+                  )}
+                  {p.produto_perfis.espessura_aco && (
+                    <SpecCard icon={<Layers className="h-4 w-4" />} label="Espessura Aço" value={p.produto_perfis.espessura_aco} />
+                  )}
+                  {p.produto_perfis.acabamento && (
+                    <SpecCard icon={<Sparkles className="h-4 w-4" />} label="Acabamento" value={p.produto_perfis.acabamento} />
+                  )}
+                </>
+              )}
+              {p.produto_parafusos && (
+                <>
+                  {p.produto_parafusos.tipo && (
+                    <SpecCard icon={<Wrench className="h-4 w-4" />} label="Tipo" value={p.produto_parafusos.tipo} />
+                  )}
+                  {p.produto_parafusos.diametro && (
+                    <SpecCard icon={<Disc className="h-4 w-4" />} label="Diâmetro" value={p.produto_parafusos.diametro} />
+                  )}
+                  {p.produto_parafusos.comprimento && (
+                    <SpecCard icon={<Ruler className="h-4 w-4" />} label="Comprimento" value={p.produto_parafusos.comprimento} />
+                  )}
+                  {p.produto_parafusos.material && (
+                    <SpecCard icon={<ShieldCheck className="h-4 w-4" />} label="Material" value={p.produto_parafusos.material} />
+                  )}
+                  {p.produto_parafusos.rendimento_m2 != null && (
+                    <SpecCard icon={<BoxSelect className="h-4 w-4" />} label="Rendimento" value={`${p.produto_parafusos.rendimento_m2} un/m²`} />
+                  )}
+                </>
+              )}
+              {p.produto_acessorios && (
+                <>
+                  {p.produto_acessorios.tipo && (
+                    <SpecCard icon={<Sparkles className="h-4 w-4" />} label="Tipo" value={p.produto_acessorios.tipo} />
+                  )}
+                  {p.produto_acessorios.aplicacao && (
+                    <SpecCard icon={<Wrench className="h-4 w-4" />} label="Aplicação" value={p.produto_acessorios.aplicacao} />
+                  )}
+                  {p.produto_acessorios.rendimento && (
+                    <SpecCard icon={<BoxSelect className="h-4 w-4" />} label="Rendimento" value={p.produto_acessorios.rendimento} />
+                  )}
+                </>
+              )}
+              {classificacaoFogo && !p.produto_revestimentos && (
+                <SpecCard
+                  icon={<ShieldCheck className="h-4 w-4" />}
+                  label="Classificação Fogo"
+                  value={classificacaoFogo}
+                />
+              )}
+            </div>
           </div>
-        </motion.div>
-      )}
+        )}
 
-      {/* CTA */}
-      <motion.div {...fadeIn} transition={{ delay: 0.25, ease: 'easeOut' as const }}>
-        <Card>
-          <CardContent className="p-6 text-center">
-            <h3 className="text-lg font-semibold mb-2">Interessado neste produto?</h3>
-            <p className="text-muted-foreground text-sm mb-4">
-              Entre em contato para orçamento personalizado.
-            </p>
-            <Link href={`${prefix}/contato`}>
-              <Button size="lg">Solicitar Orçamento</Button>
-            </Link>
-          </CardContent>
-        </Card>
+        {/* Alpha coefficient chart */}
+        {alphaData && Object.keys(alphaData).length > 0 && (
+          <AlphaChart
+            alpha={alphaData}
+            nrc={nrcValue}
+            classificacaoFogo={classificacaoFogo}
+          />
+        )}
+
+        {/* Locais de instalação */}
+        {p.locais_instalacao.length > 0 && (
+          <div>
+            <h2 className="text-lg font-semibold mb-3">Locais de Instalação</h2>
+            <div className="flex flex-wrap gap-2">
+              {p.locais_instalacao.map((local) => (
+                <Badge key={local} variant="outline" className="gap-1.5 text-sm py-1.5 px-3">
+                  <MapPin className="h-3.5 w-3.5" />
+                  {local}
+                </Badge>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Forma de instalação */}
+        {p.forma_instalacao && (
+          <div>
+            <h2 className="text-lg font-semibold mb-3">Instruções de Uso</h2>
+            <p className="text-muted-foreground leading-relaxed max-w-3xl">{p.forma_instalacao}</p>
+          </div>
+        )}
+
+        {/* Embalagem */}
+        {(p.qtd_embalagem || p.peso_embalagem) && (
+          <div>
+            <h2 className="text-lg font-semibold mb-4">Embalagem</h2>
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+              {p.qtd_embalagem && (
+                <SpecCard
+                  icon={<BoxSelect className="h-4 w-4" />}
+                  label="Qtd. Embalagem"
+                  value={`${p.qtd_embalagem} ${p.unidade_embalagem ?? p.unidade}`}
+                />
+              )}
+              {p.peso_embalagem && (
+                <SpecCard
+                  icon={<BoxSelect className="h-4 w-4" />}
+                  label="Peso"
+                  value={p.peso_embalagem}
+                />
+              )}
+            </div>
+          </div>
+        )}
       </motion.div>
     </div>
   )
