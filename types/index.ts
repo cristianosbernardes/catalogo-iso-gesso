@@ -36,6 +36,7 @@ export interface ProdutoBase {
   produto_acessorios?: ProdutoAcessorio | null
   produto_revestimentos?: ProdutoRevestimento | null
   produto_imagens?: ProdutoImagem[]
+  produto_cores?: ProdutoCor[]
   selected_color?: string | null
   color_slugs?: Record<string, string>
   variantes?: ProdutoVariante[]
@@ -134,6 +135,17 @@ export interface ProdutoImagem {
   ordem: number
   cor: string | null
   created_at: string
+}
+
+export interface ProdutoCor {
+  id: string
+  produto_id: string
+  nome: string
+  imagem_url: string | null
+  imagem_storage_path: string | null
+  ordem: number
+  created_at: string
+  updated_at: string
 }
 
 // ── Respostas paginadas da API ──

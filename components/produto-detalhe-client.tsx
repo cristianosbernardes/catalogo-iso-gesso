@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback, useRef, useEffect } from 'react'
+import { useState, useCallback, useRef, useEffect, useMemo } from 'react'
 import { motion } from 'framer-motion'
 import Link from 'next/link'
 import { Badge } from '@/components/ui/badge'
@@ -454,26 +454,7 @@ export function ProdutoDetalheClient({ produto: p }: Props) {
       el.removeEventListener('scroll', updateCoresEdges)
       window.removeEventListener('resize', updateCoresEdges)
     }
-  }, [updateCoresEdges, p.cores.length])
-
-  // ── Navegação dentro do lightbox de cores (setas e teclado) ──
-  useEffect(() => {
-    if (!colorLightbox) return
-    const imgs = p.produto_imagens ?? []
-    const list = p.cores
-      .map((cor) => ({ cor, url: imgs.find((i) => i.cor === cor)?.url ?? null }))
-      .filter((c): c is { cor: string; url: string } => !!c.url)
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') { setColorLightbox(null); return }
-      if (list.length < 2) return
-      const idx = list.findIndex((c) => c.cor === colorLightbox.cor)
-      if (idx < 0) return
-      if (e.key === 'ArrowLeft') setColorLightbox(list[(idx - 1 + list.length) % list.length])
-      else if (e.key === 'ArrowRight') setColorLightbox(list[(idx + 1) % list.length])
-    }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [colorLightbox, p.cores, p.produto_imagens])
+  }, [updateCoresEdges, p.cores.length, p.produto_cores?.length])
 
   // Filter images by selected color
   const allImages = p.produto_imagens ?? []
@@ -482,6 +463,50 @@ export function ProdutoDetalheClient({ produto: p }: Props) {
     : []
   const filteredImages =
     selectedColor && coloredImages.length > 0 ? coloredImages : allImages
+
+  // ── Unified cores list: prefer produto_cores (nova fonte), fallback para
+  //    p.cores + produto_imagens.cor (formato legado). ──
+  const coresList = useMemo<{ nome: string; url: string | null }[]>(() => {
+    const imgs = p.produto_imagens ?? []
+    if (p.produto_cores && p.produto_cores.length > 0) {
+      return [...p.produto_cores]
+        .sort((a, b) => a.ordem - b.ordem)
+        .map((c) => ({ nome: c.nome, url: c.imagem_url ?? null }))
+    }
+    return p.cores.map((nome) => ({
+      nome,
+      url: imgs.find((i) => i.cor === nome)?.url ?? null,
+    }))
+  }, [p.produto_cores, p.cores, p.produto_imagens])
+
+  // ── Navegação dentro do lightbox de cores (setas e teclado) ──
+  useEffect(() => {
+    if (!colorLightbox) return
+    const list = coresList.filter((c): c is { nome: string; url: string } => !!c.url)
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') { setColorLightbox(null); return }
+      if (list.length < 2) return
+      const idx = list.findIndex((c) => c.nome === colorLightbox.cor)
+      if (idx < 0) return
+      if (e.key === 'ArrowLeft') setColorLightbox({ cor: list[(idx - 1 + list.length) % list.length].nome, url: list[(idx - 1 + list.length) % list.length].url })
+      else if (e.key === 'ArrowRight') setColorLightbox({ cor: list[(idx + 1) % list.length].nome, url: list[(idx + 1) % list.length].url })
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [colorLightbox, coresList])
+
+  // ── Cores provenientes das variantes (distintas, em ordem de aparição) ──
+  // O seletor de cores no sidebar SÓ aparece se houver variantes com cor
+  // cadastrada E ao menos uma delas tiver imagem registrada (via produto_cores
+  // ou produto_imagens). Isso evita exibir o chip quando o produto tem cores
+  // no bloco "Cores" (carrossel) mas nenhuma variante as referencia.
+  const variantColors = [...new Set(
+    activeVariants.map((v) => v.cor).filter((c): c is string => !!c)
+  )]
+  const hasVariantColorWithImage = variantColors.some((cor) =>
+    coresList.some((c) => c.nome === cor && !!c.url)
+  )
+  const showVariantColorSelector = variantColors.length > 0 && hasVariantColorWithImage
 
   // ── All attribute keys/values across EVERY variant (for always-visible matrix) ──
   // Filter out generic keys like attr_0, attr_1 that indicate unnamed attributes in the CRM
@@ -695,15 +720,15 @@ export function ProdutoDetalheClient({ produto: p }: Props) {
             </Button>
           </div>
 
-          {/* Color selector — all colors always visible, unavailable grayed */}
-          {p.cores.length > 0 && (
+          {/* Color selector — só aparece para variantes com cor + imagem */}
+          {showVariantColorSelector && (
             <div>
               <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2.5 flex items-center gap-1.5">
                 <Palette className="h-3.5 w-3.5" />
                 {selectedColor ? `Cor: ${selectedColor}` : 'Cores disponíveis'}
               </p>
               <div className="flex flex-wrap gap-1.5 max-h-28 overflow-y-auto pr-1">
-                {p.cores.map((cor) => {
+                {variantColors.map((cor) => {
                   const available = isColorAvailable(cor)
                   const selected = selectedColor === cor
                   return (
@@ -793,7 +818,7 @@ export function ProdutoDetalheClient({ produto: p }: Props) {
         )}
 
         {/* Cores — carrossel horizontal com setas laterais */}
-        {p.cores.length > 0 && (
+        {coresList.length > 0 && (
           <div>
             <h2 className="text-lg font-semibold mb-4">Cores</h2>
             <div className="relative group/cores">
@@ -801,37 +826,34 @@ export function ProdutoDetalheClient({ produto: p }: Props) {
                 ref={coresScrollRef}
                 className="flex gap-4 overflow-x-auto scroll-smooth snap-x snap-mandatory pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
               >
-                {p.cores.map((cor) => {
-                  const imgUrl = allImages.find((i) => i.cor === cor)?.url ?? null
-                  return (
-                    <button
-                      key={cor}
-                      type="button"
-                      onClick={() => imgUrl && setColorLightbox({ cor, url: imgUrl })}
-                      disabled={!imgUrl}
-                      className="group flex flex-col gap-2 text-left disabled:cursor-default shrink-0 w-36 sm:w-40 snap-start"
-                      aria-label={`Ver cor ${cor}`}
-                    >
-                      <div className="aspect-square w-full rounded-xl overflow-hidden bg-muted/50 border border-border shadow-sm transition-all group-enabled:group-hover:shadow-md group-enabled:group-hover:scale-[1.02] group-enabled:cursor-zoom-in">
-                        {imgUrl ? (
-                          <img
-                            src={imgUrl}
-                            alt={cor}
-                            className="w-full h-full object-cover"
-                            loading="lazy"
-                          />
-                        ) : (
-                          <div className="w-full h-full flex items-center justify-center">
-                            <Palette className="h-8 w-8 text-muted-foreground/30" />
-                          </div>
-                        )}
-                      </div>
-                      <p className="text-[12px] font-medium text-foreground uppercase tracking-wide text-center">
-                        {cor}
-                      </p>
-                    </button>
-                  )
-                })}
+                {coresList.map(({ nome, url }) => (
+                  <button
+                    key={nome}
+                    type="button"
+                    onClick={() => url && setColorLightbox({ cor: nome, url })}
+                    disabled={!url}
+                    className="group flex flex-col gap-2 text-left disabled:cursor-default shrink-0 w-36 sm:w-40 snap-start"
+                    aria-label={`Ver cor ${nome}`}
+                  >
+                    <div className="aspect-square w-full rounded-xl overflow-hidden bg-muted/50 border border-border shadow-sm transition-all group-enabled:group-hover:shadow-md group-enabled:group-hover:scale-[1.02] group-enabled:cursor-zoom-in">
+                      {url ? (
+                        <img
+                          src={url}
+                          alt={nome}
+                          className="w-full h-full object-cover"
+                          loading="lazy"
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center">
+                          <Palette className="h-8 w-8 text-muted-foreground/30" />
+                        </div>
+                      )}
+                    </div>
+                    <p className="text-[12px] font-medium text-foreground uppercase tracking-wide text-center">
+                      {nome}
+                    </p>
+                  </button>
+                ))}
               </div>
 
               <button
@@ -858,9 +880,9 @@ export function ProdutoDetalheClient({ produto: p }: Props) {
 
         {/* Color lightbox */}
         {colorLightbox && (() => {
-          const lightboxList = p.cores
-            .map((cor) => ({ cor, url: allImages.find((i) => i.cor === cor)?.url ?? null }))
-            .filter((c): c is { cor: string; url: string } => !!c.url)
+          const lightboxList = coresList
+            .filter((c): c is { nome: string; url: string } => !!c.url)
+            .map((c) => ({ cor: c.nome, url: c.url }))
           const lbIdx = lightboxList.findIndex((c) => c.cor === colorLightbox.cor)
           const goPrev = () => lightboxList.length > 1 && setColorLightbox(lightboxList[(lbIdx - 1 + lightboxList.length) % lightboxList.length])
           const goNext = () => lightboxList.length > 1 && setColorLightbox(lightboxList[(lbIdx + 1) % lightboxList.length])
