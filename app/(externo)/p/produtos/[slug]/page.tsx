@@ -3,7 +3,7 @@ import { notFound } from 'next/navigation'
 import { ProdutoDetalheClient } from '@/components/produto-detalhe-client'
 import type { Metadata } from 'next'
 
-export const revalidate = 0
+export const revalidate = 300
 
 const BASE_URL = 'https://catalogo.isogesso.com.br'
 

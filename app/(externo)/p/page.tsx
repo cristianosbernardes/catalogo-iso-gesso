@@ -3,7 +3,7 @@ import { api } from '@/lib/api'
 import { HomeClient } from '@/components/home-client'
 import type { Metadata } from 'next'
 
-export const revalidate = 0
+export const revalidate = 300
 
 export const metadata: Metadata = {
   title: 'ISO-GESSO | Soluções em Isolamento Acústico',
