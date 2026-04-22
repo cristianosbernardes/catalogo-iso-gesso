@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useRef, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import Link from 'next/link'
 import { Badge } from '@/components/ui/badge'
@@ -422,6 +422,58 @@ export function ProdutoDetalheClient({ produto: p }: Props) {
     defaultVariante?.atributos ?? {}
   )
   const [copied, setCopied] = useState(false)
+  const [colorLightbox, setColorLightbox] = useState<{ cor: string; url: string } | null>(null)
+
+  // ── Carousel de cores ──
+  const coresScrollRef = useRef<HTMLDivElement>(null)
+  const [coresEdges, setCoresEdges] = useState({ left: false, right: false })
+
+  const updateCoresEdges = useCallback(() => {
+    const el = coresScrollRef.current
+    if (!el) return
+    setCoresEdges({
+      left: el.scrollLeft > 4,
+      right: el.scrollLeft + el.clientWidth < el.scrollWidth - 4,
+    })
+  }, [])
+
+  const scrollCores = useCallback((dir: 'left' | 'right') => {
+    const el = coresScrollRef.current
+    if (!el) return
+    const step = Math.max(el.clientWidth * 0.8, 200)
+    el.scrollBy({ left: dir === 'left' ? -step : step, behavior: 'smooth' })
+  }, [])
+
+  useEffect(() => {
+    updateCoresEdges()
+    const el = coresScrollRef.current
+    if (!el) return
+    el.addEventListener('scroll', updateCoresEdges, { passive: true })
+    window.addEventListener('resize', updateCoresEdges)
+    return () => {
+      el.removeEventListener('scroll', updateCoresEdges)
+      window.removeEventListener('resize', updateCoresEdges)
+    }
+  }, [updateCoresEdges, p.cores.length])
+
+  // ── Navegação dentro do lightbox de cores (setas e teclado) ──
+  useEffect(() => {
+    if (!colorLightbox) return
+    const imgs = p.produto_imagens ?? []
+    const list = p.cores
+      .map((cor) => ({ cor, url: imgs.find((i) => i.cor === cor)?.url ?? null }))
+      .filter((c): c is { cor: string; url: string } => !!c.url)
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') { setColorLightbox(null); return }
+      if (list.length < 2) return
+      const idx = list.findIndex((c) => c.cor === colorLightbox.cor)
+      if (idx < 0) return
+      if (e.key === 'ArrowLeft') setColorLightbox(list[(idx - 1 + list.length) % list.length])
+      else if (e.key === 'ArrowRight') setColorLightbox(list[(idx + 1) % list.length])
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [colorLightbox, p.cores, p.produto_imagens])
 
   // Filter images by selected color
   const allImages = p.produto_imagens ?? []
@@ -739,6 +791,136 @@ export function ProdutoDetalheClient({ produto: p }: Props) {
             <p className="text-muted-foreground leading-relaxed">{p.especificacao}</p>
           </div>
         )}
+
+        {/* Cores — carrossel horizontal com setas laterais */}
+        {p.cores.length > 0 && (
+          <div>
+            <h2 className="text-lg font-semibold mb-4">Cores</h2>
+            <div className="relative group/cores">
+              <div
+                ref={coresScrollRef}
+                className="flex gap-4 overflow-x-auto scroll-smooth snap-x snap-mandatory pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+              >
+                {p.cores.map((cor) => {
+                  const imgUrl = allImages.find((i) => i.cor === cor)?.url ?? null
+                  return (
+                    <button
+                      key={cor}
+                      type="button"
+                      onClick={() => imgUrl && setColorLightbox({ cor, url: imgUrl })}
+                      disabled={!imgUrl}
+                      className="group flex flex-col gap-2 text-left disabled:cursor-default shrink-0 w-36 sm:w-40 snap-start"
+                      aria-label={`Ver cor ${cor}`}
+                    >
+                      <div className="aspect-square w-full rounded-xl overflow-hidden bg-muted/50 border border-border shadow-sm transition-all group-enabled:group-hover:shadow-md group-enabled:group-hover:scale-[1.02] group-enabled:cursor-zoom-in">
+                        {imgUrl ? (
+                          <img
+                            src={imgUrl}
+                            alt={cor}
+                            className="w-full h-full object-cover"
+                            loading="lazy"
+                          />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center">
+                            <Palette className="h-8 w-8 text-muted-foreground/30" />
+                          </div>
+                        )}
+                      </div>
+                      <p className="text-[12px] font-medium text-foreground uppercase tracking-wide text-center">
+                        {cor}
+                      </p>
+                    </button>
+                  )
+                })}
+              </div>
+
+              <button
+                type="button"
+                onClick={() => scrollCores('left')}
+                disabled={!coresEdges.left}
+                aria-label="Cores anteriores"
+                className="absolute left-0 top-[calc(50%-14px)] -translate-y-1/2 -translate-x-1/2 h-10 w-10 rounded-full bg-background border border-border shadow-md flex items-center justify-center text-foreground transition-all hover:bg-muted disabled:opacity-0 disabled:pointer-events-none"
+              >
+                <ChevronLeft className="h-5 w-5" />
+              </button>
+              <button
+                type="button"
+                onClick={() => scrollCores('right')}
+                disabled={!coresEdges.right}
+                aria-label="Próximas cores"
+                className="absolute right-0 top-[calc(50%-14px)] -translate-y-1/2 translate-x-1/2 h-10 w-10 rounded-full bg-background border border-border shadow-md flex items-center justify-center text-foreground transition-all hover:bg-muted disabled:opacity-0 disabled:pointer-events-none"
+              >
+                <ChevronRight className="h-5 w-5" />
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Color lightbox */}
+        {colorLightbox && (() => {
+          const lightboxList = p.cores
+            .map((cor) => ({ cor, url: allImages.find((i) => i.cor === cor)?.url ?? null }))
+            .filter((c): c is { cor: string; url: string } => !!c.url)
+          const lbIdx = lightboxList.findIndex((c) => c.cor === colorLightbox.cor)
+          const goPrev = () => lightboxList.length > 1 && setColorLightbox(lightboxList[(lbIdx - 1 + lightboxList.length) % lightboxList.length])
+          const goNext = () => lightboxList.length > 1 && setColorLightbox(lightboxList[(lbIdx + 1) % lightboxList.length])
+          return (
+            <motion.div
+              className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 backdrop-blur-sm"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              onClick={() => setColorLightbox(null)}
+            >
+              <button
+                onClick={() => setColorLightbox(null)}
+                className="absolute top-4 right-4 w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition-colors z-10"
+                aria-label="Fechar"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round">
+                  <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+                </svg>
+              </button>
+              <div className="absolute top-4 left-1/2 -translate-x-1/2 px-3 py-1 rounded-full bg-white/10 text-white text-sm font-medium uppercase tracking-wide">
+                {colorLightbox.cor}
+                {lightboxList.length > 1 && (
+                  <span className="ml-2 text-white/60">{lbIdx + 1}/{lightboxList.length}</span>
+                )}
+              </div>
+
+              {lightboxList.length > 1 && (
+                <>
+                  <button
+                    type="button"
+                    onClick={(e) => { e.stopPropagation(); goPrev() }}
+                    aria-label="Cor anterior"
+                    className="absolute left-4 sm:left-8 top-1/2 -translate-y-1/2 h-12 w-12 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition-colors z-10 text-white"
+                  >
+                    <ChevronLeft className="h-6 w-6" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={(e) => { e.stopPropagation(); goNext() }}
+                    aria-label="Próxima cor"
+                    className="absolute right-4 sm:right-8 top-1/2 -translate-y-1/2 h-12 w-12 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition-colors z-10 text-white"
+                  >
+                    <ChevronRight className="h-6 w-6" />
+                  </button>
+                </>
+              )}
+
+              <motion.img
+                key={colorLightbox.url}
+                src={colorLightbox.url}
+                alt={colorLightbox.cor}
+                className="max-h-[85vh] max-w-[90vw] object-contain rounded-xl shadow-2xl"
+                initial={{ scale: 0.9, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                transition={{ duration: 0.2 }}
+                onClick={(e) => e.stopPropagation()}
+              />
+            </motion.div>
+          )
+        })()}
 
         {/* Especificações técnicas */}
         {hasSpecs && (
