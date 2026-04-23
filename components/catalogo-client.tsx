@@ -9,7 +9,7 @@ import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { Package, Search, Layers, Ruler, Wrench, Disc, Sparkles } from 'lucide-react'
 import { useCatalogContext } from '@/contexts/catalog-context'
-import { resolveCardPrice, formatBRL } from '@/lib/produto-card-price'
+import { resolveCardPrice, resolveCardUnidade, formatBRL } from '@/lib/produto-card-price'
 import type { ProdutoBase } from '@/types'
 
 const fadeIn = {
@@ -122,6 +122,9 @@ export function CatalogoClient({ initialProdutos }: Props) {
                   {isInternal && (
                     <p className="text-sm font-bold text-primary mt-2">
                       {formatBRL(resolveCardPrice(p))}
+                      <span className="text-xs font-medium text-muted-foreground ml-0.5">
+                        / {resolveCardUnidade(p)}
+                      </span>
                     </p>
                   )}
                 </div>

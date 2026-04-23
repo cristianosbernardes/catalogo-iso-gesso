@@ -8,6 +8,7 @@ export interface ProdutoBase {
   estoque: number
   unidade: string
   preco: number
+  unidade_preco: string
   especificacao: string | null
   classificacao_fogo: string | null
   cores: string[]
@@ -50,6 +51,7 @@ export interface ProdutoVariante {
   atributos: Record<string, string>
   sku: string | null
   preco: number
+  unidade_preco: string
   estoque: number
   estoque_minimo: number | null
   slug: string | null

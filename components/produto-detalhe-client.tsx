@@ -187,13 +187,15 @@ function AlphaChart({
 // ─── PriceDisplay ────────────────────────────────────────────────────────────
 
 interface PriceDisplayProps {
-  variante: { preco: number; preco_promocional?: number | null } | null
+  variante: { preco: number; preco_promocional?: number | null; unidade_preco?: string } | null
   precoProduto: number
+  unidadeProduto: string
 }
 
-function PriceDisplay({ variante, precoProduto }: PriceDisplayProps) {
+function PriceDisplay({ variante, precoProduto, unidadeProduto }: PriceDisplayProps) {
   const preco = variante?.preco ?? precoProduto
   const precoPromo = variante?.preco_promocional ?? null
+  const unidade = variante?.unidade_preco || unidadeProduto || 'm²'
 
   return (
     <div>
@@ -201,6 +203,7 @@ function PriceDisplay({ variante, precoProduto }: PriceDisplayProps) {
         <div className="flex items-baseline gap-2.5 flex-wrap">
           <span className="text-2xl font-bold" style={{ color: '#16a34a' }}>
             {formatBRL(Number(precoPromo))}
+            <span className="text-base font-medium text-muted-foreground ml-1">/ {unidade}</span>
           </span>
           <span className="text-base text-muted-foreground line-through">
             {formatBRL(Number(preco))}
@@ -212,6 +215,7 @@ function PriceDisplay({ variante, precoProduto }: PriceDisplayProps) {
       ) : (
         <span className="text-2xl font-bold" style={{ color: '#006DAA' }}>
           {formatBRL(Number(preco))}
+          <span className="text-base font-medium text-muted-foreground ml-1">/ {unidade}</span>
         </span>
       )}
     </div>
@@ -259,14 +263,14 @@ function ImageGallery({ images, nome }: { images: ProdutoImagem[]; nome: string 
         {images.length > 1 && (
           <>
             <button
-              onClick={goPrev}
+              onClick={(e) => { e.stopPropagation(); goPrev() }}
               className="absolute left-3 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-white/80 backdrop-blur-sm shadow-md flex items-center justify-center hover:bg-white transition-colors"
               aria-label="Imagem anterior"
             >
               <ChevronLeft className="h-5 w-5 text-foreground" />
             </button>
             <button
-              onClick={goNext}
+              onClick={(e) => { e.stopPropagation(); goNext() }}
               className="absolute right-3 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-white/80 backdrop-blur-sm shadow-md flex items-center justify-center hover:bg-white transition-colors"
               aria-label="Próxima imagem"
             >
@@ -514,6 +518,18 @@ export function ProdutoDetalheClient({ produto: p }: Props) {
       null
     : null)
 
+  // Sincroniza a URL com o slug da variante selecionada, sem reload/refetch.
+  // Usa history.replaceState para não empilhar entradas no histórico a cada
+  // toggle de atributo.
+  useEffect(() => {
+    const targetSlug = resolvedVariante?.slug || p.public_slug
+    if (!targetSlug) return
+    const targetPath = `${prefix}/produtos/${targetSlug}`
+    if (window.location.pathname !== targetPath) {
+      window.history.replaceState(null, '', targetPath + window.location.search + window.location.hash)
+    }
+  }, [resolvedVariante?.slug, p.public_slug, prefix])
+
   // ── Availability checks for grayed-out state ──
   const isColorAvailable = (cor: string): boolean => {
     if (Object.keys(selectedAtributos).length === 0) return true
@@ -677,6 +693,7 @@ export function ProdutoDetalheClient({ produto: p }: Props) {
             <PriceDisplay
               variante={resolvedVariante}
               precoProduto={p.preco}
+              unidadeProduto={p.unidade_preco || 'm²'}
             />
           )}
 

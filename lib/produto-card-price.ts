@@ -39,3 +39,26 @@ export function resolveCardPrice(p: ProdutoBase): number {
   )
   return sorted[0].preco ?? 0
 }
+
+/**
+ * Espelha `resolveCardPrice` para devolver a unidade do preço (m², m³,
+ * metro linear, un). Default `'m²'` (mesmo default do CRM).
+ */
+export function resolveCardUnidade(p: ProdutoBase): string {
+  const activeVariants = (p.variantes ?? []).filter((v) => v.ativo)
+  const fallback = p.unidade_preco || 'm²'
+
+  if (activeVariants.length === 0) return fallback
+
+  const mainImage = (p.produto_imagens ?? []).slice().sort((a, b) => a.ordem - b.ordem)[0]
+
+  if (mainImage?.cor) {
+    const variantForColor = activeVariants.find((v) => v.cor === mainImage.cor)
+    if (variantForColor) return variantForColor.unidade_preco || fallback
+  }
+
+  const sorted = activeVariants.slice().sort(
+    (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+  )
+  return sorted[0].unidade_preco || fallback
+}
