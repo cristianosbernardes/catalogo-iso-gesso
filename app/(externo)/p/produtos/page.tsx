@@ -11,6 +11,8 @@ export const metadata: Metadata = {
 }
 
 export default async function ProdutosPage() {
-  const produtos = await api.catalogo.listar().catch(() => [])
+  // Sem catch: se a API falhar, o erro sobe para app/error.tsx (UI de "tente
+  // novamente"). Um retorno [] legítimo cai no estado vazio do CatalogoClient.
+  const produtos = await api.catalogo.listar()
   return <Suspense><CatalogoClient initialProdutos={produtos} /></Suspense>
 }

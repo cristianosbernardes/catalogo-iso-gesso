@@ -12,6 +12,7 @@ export const metadata: Metadata = {
 }
 
 export default async function ProdutosInternoPage() {
-  const produtos = await api.catalogo.listar().catch(() => [])
+  // Sem catch: falha da API sobe para app/error.tsx; [] legítimo → estado vazio.
+  const produtos = await api.catalogo.listar()
   return <Suspense><CatalogoClient initialProdutos={produtos} /></Suspense>
 }
