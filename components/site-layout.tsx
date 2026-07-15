@@ -45,18 +45,12 @@ export default function SiteLayout({ children }: { children: React.ReactNode }) 
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             {/* Logo */}
-            <Link
-              href={prefix}
-              className="flex items-center gap-2.5 shrink-0 bg-[#FFF100] rounded-xl px-3 py-1.5"
-            >
+            <Link href={prefix} className="flex items-center shrink-0">
               <img
                 src="/logo-isogesso.svg"
                 alt="ISO-GESSO"
-                className="h-8 w-auto"
+                className="h-9 w-auto"
               />
-              <span className="font-extrabold tracking-tight text-lg leading-none" style={{ color: '#006DAA' }}>
-                ISO-GESSO
-              </span>
             </Link>
 
             {/* Desktop: Search + Nav */}
@@ -158,13 +152,8 @@ export default function SiteLayout({ children }: { children: React.ReactNode }) 
           <div className="grid grid-cols-1 md:grid-cols-5 gap-8">
             {/* Brand */}
             <div className="md:col-span-2">
-              <div className="flex items-center gap-2.5 mb-3">
-                <div className="flex items-center gap-2 bg-[#FFF100] rounded-xl px-2.5 py-1">
-                  <img src="/logo-isogesso.svg" alt="ISO-GESSO" className="h-6 w-auto" />
-                  <span className="font-extrabold tracking-tight text-base leading-none" style={{ color: '#006DAA' }}>
-                    ISO-GESSO
-                  </span>
-                </div>
+              <div className="flex items-center mb-3">
+                <img src="/logo-isogesso.svg" alt="ISO-GESSO" className="h-8 w-auto" />
               </div>
               <p className="text-sm text-muted-foreground max-w-sm">
                 Soluções em isolamento acústico e materiais de alta performance para construção civil.
