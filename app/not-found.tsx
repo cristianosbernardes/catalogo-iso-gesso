@@ -1,10 +1,13 @@
 import Link from 'next/link'
 import { PackageX } from 'lucide-react'
-import { buttonVariants } from '@/components/ui/button'
 
 /**
  * Página 404 custom — substitui o default do Next. Usada quando `notFound()`
  * é chamado (ex.: slug de produto inexistente) ou uma rota não casa.
+ *
+ * Server Component: por isso o botão usa classes inline (equivalentes ao
+ * Button default) em vez de `buttonVariants()`, que vive num módulo "use client"
+ * e não pode ser invocado do servidor.
  */
 export default function NotFound() {
   return (
@@ -14,7 +17,10 @@ export default function NotFound() {
       <p className="mt-2 max-w-md text-sm text-muted-foreground">
         O produto ou página que você procura não existe ou foi movido.
       </p>
-      <Link href="/p/produtos" className={buttonVariants({ className: 'mt-6' })}>
+      <Link
+        href="/p/produtos"
+        className="mt-6 inline-flex h-8 items-center justify-center rounded-lg bg-primary px-4 text-sm font-medium text-primary-foreground transition-all hover:bg-primary/80"
+      >
         Ver catálogo
       </Link>
     </div>
